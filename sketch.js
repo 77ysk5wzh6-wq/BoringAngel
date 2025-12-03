@@ -5,6 +5,7 @@ let fft; // FFT 객체를 전역으로 이동
 let amp; // 볼륨 측정을 위한 Amplitude 객체
 let bravuraFont;
 let timer = 0;
+let isMobile; // 모바일 기기 여부 확인용 변수
 let FONT_URL = 'https://raw.githubusercontent.com/77ysk5wzh6-wq/BravuraFont/main/Bravura.otf';
 
 
@@ -26,12 +27,25 @@ function preload() {
 function setup() {
   createCanvas(windowWidth - 10, windowHeight - 10); // 캔버스를 창 크기로 설정
 
+  // 사용자 에이전트를 확인하여 모바일 기기인지 판별합니다.
+  isMobile = /Mobi|Android/i.test(navigator.userAgent);
+
   fft = new p5.FFT(0.8, 512); // FFT 객체 초기화
   amp = new p5.Amplitude(); // Amplitude 객체 초기화
 
   // 모든 씬의 setup()을 호출합니다.
   sceneManager.setup();
   sceneManager.showScene(0); // 첫 번째 씬으로 시작
+
+  // 모바일 환경일 경우, 5초 후에 자동으로 재생을 시작합니다.
+  if (isMobile) {
+    setTimeout(() => {
+      // 씬1에 있고, 노래가 재생 중이 아닐 때만 시작합니다.
+      if (sceneManager.sceneIndex === 0 && !song.isPlaying()) {
+        sceneManager.currentScene.togglePlay();
+      }
+    }, 5000); // 5000ms = 5초
+  }
 }
 
 function draw() {
@@ -144,6 +158,13 @@ function keyPressed() {
   }
 }
 
+function mousePressed() {
+  // 모바일이 아닐 때만 터치/클릭으로 시작/일시정지
+  if (!isMobile && sceneManager.currentScene && sceneManager.currentScene.mousePressed) {
+    sceneManager.currentScene.mousePressed();
+  }
+}
+
 // 여러 씬을 관리하는 클래스
 class SceneManager {
   constructor() {
@@ -218,6 +239,12 @@ class SceneManager {
   keyPressed() {
     if (this.currentScene) {
       this.currentScene.keyPressed();
+    }
+  }
+
+  mousePressed() {
+    if (this.currentScene && this.currentScene.mousePressed) {
+      this.currentScene.mousePressed();
     }
   }
 }
