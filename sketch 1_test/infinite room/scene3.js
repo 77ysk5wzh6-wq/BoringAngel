@@ -1,0 +1,507 @@
+class Scene3 {
+  constructor(bravuraFont) {
+
+    this.SMILE_EMOJI_START_TIME = 180.6;
+    this.EMOJI_DURATION = 1.5;
+
+    this.song = song;
+    this.video = null; // 비디오 엘리먼트
+    this.asciiGlyphs = [];
+
+    // --- 그리드 설정 ---
+    this.initialCols = 37;
+    this.initialRows = 20;
+    // this.finalCols = 56;
+    // this.finalRows = 32;
+
+    this.finalCols = 112;
+    this.finalRows = 64;
+
+    this.cols = 0;
+    this.rows = 0;
+    this.cellSize = 0;
+    this.glyphSize = 0;
+
+    // --- 전환 애니메이션 상태 ---
+    this.transitionState = 'idle'; // 'idle', 'shrinking', 'expanding', 'expansion_done', 'morphing', 'playing'
+    this.transitionStartTime = 0;
+    this.shrinkDuration = 3000; // 3초
+    this.expansionDuration = 6000; // 6초
+    this.morphDelay = 100; // 0.1초
+    this.morphDuration = 3200; // 3.2초
+
+    this.gridData = []; // 그리드 셀의 정보를 담는 배열
+
+    // --- 색상 변경 애니메이션 (후반부) ---
+    this.lastColorChangeTime = 0;
+    this.colorChangeInterval = 60000 / 48; // 48 BPM
+    this.sweepStartTime = 0;
+    this.sweepDuration = 400; // 0.4초
+    this.bgHoldDuration = 100; // 0.3초 (배경 검은색 유지)
+    this.bgFadeDuration = 400; // 0.4초 (배경 흰색으로 복귀)
+    this.shuffledCols = []; // 색상 변경을 위해 무작위로 섞인 열 인덱스
+
+    this.randomChars = ".`,-':;~i!lI?rvunogxcyz[]{}1()O0S23456789EZG%#MW&B@$";
+
+    this.currentScale = 1; // 줌 효과는 사용하지 않으므로 1로 고정
+    this.targetScale = 1;
+    this.isReady = false; // 에셋 로딩 및 파싱 완료 여부
+
+    // --- 원 그리기 설정 ---
+    this.circleColors = {};
+    this.circlePatterns = [];
+  }
+
+  preload() {
+    // 폰트는 외부에서 전달받으므로, 이 씬에서는 preload할 것이 없습니다.
+    // 비디오 에셋을 preload에서 로드하여 setup 이전에 로딩을 보장합니다.
+    this.video = createVideo(['assets/footage.mp4']);
+  }
+  
+  // 메인 스케치의 setup에서 호출됩니다.
+  setup() {
+    // --- 비디오 설정 ---
+    this.video.volume(0); // 비디오 소리 끄기
+    this.video.hide(); // 비디오 엘리먼트를 화면에 표시하지 않음
+    this.video.loop(); // 비디오 반복 재생
+
+    // 최종 그리드(180x101)를 기준으로 셀 크기 계산
+    this.cols = this.finalCols;
+    this.rows = this.finalRows;
+    this.cellSize = width / this.cols;
+    this.glyphSize = this.cellSize;
+
+    // 제공된 문자열은 밀도가 낮은 순서(. -> @)로 정렬되어 있습니다.
+    const densityString = ".`,-':;~i!lI?rvunogxcyz[]{}1()O0S23456789EZG%#MW&B@$";
+    // 밝기 매핑을 위해 배열을 뒤집어, 어두울수록 밀도 높은 문자가 선택되도록 합니다.
+    this.asciiGlyphs = densityString.split('').reverse();
+
+    this.isReady = true;
+
+    // --- 원 그리기 색상 및 패턴 정의 ---
+    this.circleColors = {
+      color1: color(255, 0, 0),       // 빨강
+      color2: color(172, 198, 246), // 연한 하늘색
+      color3: color(95, 20, 18),        // 자주색
+      color4: color(115, 70, 142),    // 보라색
+      color5: color(69, 151, 239),    // 파란색
+      color6: color(113, 219, 246), // 형광 하늘색
+      color7: color(39, 38, 43)        // 검정
+    };
+
+    // 밝기가 어두운 순서대로 패턴 정의
+    const cellD = this.cellSize;
+    this.circlePatterns = [
+      [{ color: 'color7', size: cellD / 1.2 }, { color: 'color3', size: cellD / 2 }],
+      [{ color: 'color7', size: cellD / 1.2 }, { color: 'color4', size: cellD / 1.6 }, { color: 'color3', size: cellD / 2.6 }],
+      [{ color: 'color4', size: cellD / 1.2 }, { color: 'color7', size: cellD / 2 }],
+      [{ color: 'color7', size: cellD / 1.2 }, { color: 'color2', size: cellD / 1.6 }, { color: 'color5', size: cellD / 2 }],
+      [{ color: 'color5', size: cellD / 1.2 }, { color: 'color1', size: cellD / 1.6 }],
+      [{ color: 'color2', size: cellD / 1.2 }, { color: 'color6', size: cellD / 1.4 }, { color: 'color5', size: cellD / 2.3 }],
+      [{ color: 'color2', size: cellD / 1.2 }, { color: 'color6', size: cellD / 2 }]
+    ];
+    
+    console.log("Scene 3 is set up and ready.");
+    console.log(`Grid: ${this.cols}x${this.rows}`);
+    console.log(`Using ${this.asciiGlyphs.length} glyphs: ${this.asciiGlyphs.join('')}`);
+  }
+
+  // 씬이 활성화될 때마다 호출됩니다.
+  enter() {
+    if (this.video) {
+      this.video.time(0);
+      this.video.pause(); // 애니메이션이 끝날 때까지 비디오 정지
+    }
+    this.currentScale = 1;
+    this.targetScale = 1;
+    this.transitionState = 'shrinking';
+    this.transitionStartTime = millis();
+    this.prepareInitialGrid();
+
+    frameRate(30); // 비디오 프레임레이트와 유사하게 설정
+  }
+
+  // 메인 스케치의 draw에서 호출됩니다.
+  draw() {
+    // 이 씬의 모든 그리기 작업을 push/pop으로 감싸서
+    // 외부(다른 씬 또는 sketch.js)에 영향을 주지 않도록 격리합니다.
+    push();
+    background(255);
+
+    if (!this.isReady || this.video.width === 0) {
+      textAlign(CENTER, CENTER);
+      fill(0);
+      textSize(32);
+      text("Loading Scene 3 Assets...", width / 2, height / 2);
+      pop(); // push에 대한 pop
+      return;
+    }
+
+    if (this.transitionState === 'shrinking') {
+      this.updateAndDrawShrinking();
+    } else if (this.transitionState === 'expanding') {
+      this.updateAndDrawExpansion();
+    } else if (this.transitionState === 'expansion_done') {
+      this.handleExpansionDone();
+    } else if (this.transitionState === 'morphing') {
+      this.updateAndDrawMorphing();
+    } else if (this.transitionState === 'playing') {
+      this.drawAsciiArt();
+    }
+
+    if (this.song.isPlaying()){
+      let currentTime = this.song.currentTime();
+      if(currentTime <= this.SMILE_EMOJI_START_TIME + this.EMOJI_DURATION && currentTime >= this.SMILE_EMOJI_START_TIME){
+        push();
+        textAlign(CENTER, CENTER);
+        fill(random(245, 255));
+        rectMode(CENTER);
+        rect(width / 2, height / 2, windowWidth, windowHeight);
+        // Scene4의 초기 그리드 크기(39x39)와 동일한 기준으로 텍스트 크기를 계산합니다.
+        const scene4GridSize = 39;
+        const emojiSize = min(width / scene4GridSize, height / scene4GridSize) * 0.8;
+        textSize(emojiSize);
+        text('😄',width/2, height/2);
+        pop();
+      }
+    }  
+    pop(); // push에 대한 pop
+  }
+
+  prepareInitialGrid() {
+    this.gridData = [];
+    const poem = `Look again at that dot.
+    That's here. That's home. That's us.
+    On it everyone you love, everyone you know,
+    everyone you ever heard of, every human being who ever was,
+    lived out their lives. The aggregate of our joy and suffering,
+    thousands of confident religions, ideologies, and economic doctrines,
+    every hunter and forager, every hero and coward,
+    every creator and destroyer of civilization, every king and peasant,
+    every young couple in love, every mother and father, hopeful child,
+    inventor and explorer, every teacher of morals, every corrupt politician,
+    every "superstar," every "supreme leader," every saint and sinner in the
+    history of our species lived there--on a mote of dust suspended in a sunbeam.`;
+    
+    const poemChars = poem.replace(/\n/g, ' ').replace(/\s+/g, ' ');
+
+    for (let i = 0; i < this.finalCols * this.finalRows; i++) {
+      this.gridData.push({
+        char: ' ',
+        targetChar: ' ',
+        color: color(0, 0, 255), // 파란색
+        isMorphed: false, // morph 애니메이션에서 변환되었는지 여부
+      });
+    }
+
+    // 초기 37x20 그리드에 시 글귀를 채웁니다.
+    // 글자들이 그리드의 중앙에 위치하도록 시작점을 계산합니다.
+    const centerCol = floor(this.finalCols / 2);
+    const centerRow = floor(this.finalRows / 2);
+    const startCol = floor(centerCol - this.initialCols / 2);
+    const startRow = floor(centerRow - this.initialRows / 2);
+
+    for (let j = 0; j < this.initialRows; j++) {
+      for (let i = 0; i < this.initialCols; i++) {
+        const sourceIndex = j * this.initialCols + i;
+        const targetIndex = (startRow + j) * this.finalCols + (startCol + i);
+        if (this.gridData[targetIndex]) {
+          // 인용문 길이 내에서만 글자를 채우고, 나머지는 공백으로 둡니다.
+          if (sourceIndex < poemChars.length) {
+            this.gridData[targetIndex].char = poemChars[sourceIndex];
+          }
+          // sourceIndex가 poemChars.length 이상이면, 초기값인 ' '가 유지됩니다.
+        }
+      }
+    }
+  }
+
+  updateAndDrawShrinking() {
+    const elapsedTime = millis() - this.transitionStartTime;
+    const progress = constrain(elapsedTime / this.shrinkDuration, 0, 1);
+
+    // 최종 그리드(180x111) 기준, 30x18 영역의 크기
+    const targetGridWidth = this.initialCols * this.cellSize;
+    const targetGridHeight = this.initialRows * this.cellSize;
+
+    // 현재 그리드의 크기와 위치를 lerp로 계산
+    const currentGridWidth = lerp(width, targetGridWidth, progress);
+    const currentGridHeight = lerp(height, targetGridHeight, progress);
+    const currentX = lerp(0, (width - targetGridWidth) / 2, progress);
+    const currentY = lerp(0, (height - targetGridHeight) / 2, progress);
+
+    // 현재 셀과 글자 크기 계산
+    const currentCellWidth = currentGridWidth / this.initialCols;
+    const currentCellHeight = currentGridHeight / this.initialRows;
+    const currentTextSize = min(currentCellWidth, currentCellHeight);
+
+    background(255);
+    textAlign(CENTER, CENTER);
+    textSize(currentTextSize);
+    fill(0, 0, 255); // Scene2와 동일하게 파란색
+
+    // 글자들이 그리드의 중앙에 위치하도록 시작점을 계산
+    const centerCol = floor(this.finalCols / 2);
+    const centerRow = floor(this.finalRows / 2);
+    const startCol = floor(centerCol - this.initialCols / 2);
+    const startRow = floor(centerRow - this.initialRows / 2);
+
+    for (let j = 0; j < this.initialRows; j++) {
+      for (let i = 0; i < this.initialCols; i++) {
+        // 중앙에 위치한 글자 데이터를 가져옵니다.
+        const targetIndex = (startRow + j) * this.finalCols + (startCol + i);
+        if (this.gridData[targetIndex]) {
+          const cell = this.gridData[targetIndex];
+          const x = currentX + i * currentCellWidth + currentCellWidth / 2;
+          const y = currentY + j * currentCellHeight + currentCellHeight / 2;
+          text(cell.char, x, y);
+        }
+      }
+    }
+
+    if (progress >= 1) {
+      this.transitionState = 'expanding';
+      this.transitionStartTime = millis();
+    }
+  }
+
+  updateAndDrawExpansion() {
+    const elapsedTime = millis() - this.transitionStartTime;
+    const progress = constrain(elapsedTime / this.expansionDuration, 0, 1);
+
+    // 현재 진행률에 따라 보여줄 그리드 크기 계산
+    const currentCols = floor(lerp(this.initialCols, this.finalCols, progress));
+    const currentRows = floor(lerp(this.initialRows, this.finalRows, progress));
+
+    // 색상 변경
+    const numToBlacken = floor(progress * this.gridData.length);
+    let blueIndices = [];
+    this.gridData.forEach((cell, i) => {
+      if (cell.color.levels[2] === 255) blueIndices.push(i);
+    });
+    for (let i = 0; i < numToBlacken - (this.gridData.length - blueIndices.length); i++) {
+      if (blueIndices.length > 0) {
+        const randIdx = floor(random(blueIndices.length));
+        const gridIdx = blueIndices.splice(randIdx, 1)[0];
+        this.gridData[gridIdx].color = color(0); // 검은색으로 변경
+      }
+    }
+
+    // 그리기
+    background(255);
+    textAlign(CENTER, CENTER);
+    textSize(this.glyphSize);
+
+    // 최종 그리드를 화면 중앙에 위치시키기 위한 오프셋
+    const offsetX = (width - this.finalCols * this.cellSize) / 2;
+    const offsetY = (height - this.finalRows * this.cellSize) / 2;
+
+    // 중앙에서부터 상하좌우로 확장되도록 그릴 범위를 계산합니다.
+    const centerCol = floor(this.finalCols / 2);
+    const centerRow = floor(this.finalRows / 2);
+    const startCol = floor(centerCol - currentCols / 2);
+    const endCol = floor(centerCol + currentCols / 2);
+    const startRow = floor(centerRow - currentRows / 2);
+    const endRow = floor(centerRow + currentRows / 2);
+
+    for (let j = startRow; j < endRow; j++) {
+      for (let i = startCol; i < endCol; i++) {
+        const cell = this.gridData[j * this.finalCols + i];
+        if (!cell) continue;
+
+        // 
+        if (progress > 0 && random() > 0.988) {
+          // 초기 30x18 영역 밖의 셀에만 무작위 문자를 채웁니다.
+          cell.char = random(this.randomChars.split(''));
+        }
+        
+        fill(cell.color);
+        text(cell.char, offsetX + i * this.cellSize + this.cellSize / 2, offsetY + j * this.cellSize + this.cellSize / 2);
+      }
+    }
+
+    if (progress >= 1) {
+      // expansion이 끝나면 'expansion_done' 상태로 전환하고, 현재 시간을 기록합니다.
+      this.transitionState = 'expansion_done';
+      this.transitionStartTime = millis();
+    }
+  }
+
+  handleExpansionDone() {
+    // expansion의 마지막 프레임을 계속 그립니다.
+    background(255);
+    textAlign(CENTER, CENTER);
+    textSize(this.glyphSize);
+
+    const offsetX = (width - this.finalCols * this.cellSize) / 2;
+    const offsetY = (height - this.finalRows * this.cellSize) / 2;
+
+    for (let i = 0; i < this.gridData.length; i++) {
+      const cell = this.gridData[i];
+      const x = offsetX + (i % this.finalCols) * this.cellSize + this.cellSize / 2;
+      const y = offsetY + floor(i / this.finalCols) * this.cellSize + this.cellSize / 2;
+      fill(cell.color);
+      text(cell.char, x, y);
+    }
+
+    // 0.5초(500ms)가 지났는지 확인합니다.
+    const elapsedTime = millis() - this.transitionStartTime;
+    if (elapsedTime >= this.morphDelay) {
+      // 0.5초가 지나면 morphing 상태로 전환하고, 애니메이션을 준비합니다.
+      console.log("Starting morphing after 0.5s delay.");
+      this.transitionState = 'morphing';
+      this.transitionStartTime = millis(); // morphing 애니메이션 시작 시간 재설정
+      this.prepareMorphTarget(); // morphing 목표 프레임 준비
+    }
+  }
+
+  prepareMorphTarget() {
+    this.video.loadPixels();
+    if (this.video.pixels.length > 0) {
+      for (let i = 0; i < this.gridData.length; i++) {
+        const col = i % this.finalCols;
+        const row = floor(i / this.finalCols);
+        const videoX = floor(map(col + 0.5, 0, this.finalCols, 0, this.video.width));
+        const videoY = floor(map(row + 0.5, 0, this.finalRows, 0, this.video.height));
+        const idx = (videoY * this.video.width + videoX) * 4;
+        const r = this.video.pixels[idx];
+        const g = this.video.pixels[idx + 1];
+        const b = this.video.pixels[idx + 2];
+        const brightness = (r + g + b) / 3;
+        const glyphIndex = floor((brightness / 255) * (this.asciiGlyphs.length - 1));
+        this.gridData[i].targetChar = this.asciiGlyphs[glyphIndex];
+        this.gridData[i].color = color(0); // 최종 색상은 검정
+      }
+    }
+  }
+
+  updateAndDrawMorphing() {
+    const elapsedTime = millis() - this.transitionStartTime;
+    const progress = constrain(elapsedTime / this.morphDuration, 0, 1);
+
+    background(255);
+    textAlign(CENTER, CENTER);
+    textSize(this.glyphSize);
+    fill(0);
+
+    const offsetX = (width - this.finalCols * this.cellSize) / 2;
+    const offsetY = (height - this.finalRows * this.cellSize) / 2;
+
+    for (let i = 0; i < this.gridData.length; i++) {
+      const cell = this.gridData[i];
+      
+      // 아직 변환되지 않은 셀에 대해서만 확률적으로 변환을 시도합니다.
+      // 변환 빈도를 1/4로 줄입니다.
+      if (!cell.isMorphed && random() < progress * 0.25) {
+        cell.isMorphed = true;
+      }
+      const x = offsetX + (i % this.finalCols) * this.cellSize + this.cellSize / 2;
+      const y = offsetY + floor(i / this.finalCols) * this.cellSize + this.cellSize / 2;
+      // isMorphed 상태에 따라 그릴 문자를 결정합니다.
+      text(cell.isMorphed ? cell.targetChar : cell.char, x, y);
+    }
+
+    if (progress >= 1) {
+      // 애니메이션이 끝나면 모든 셀을 morphed 상태로 만듭니다.
+      for (let i = 0; i < this.gridData.length; i++) {
+        this.gridData[i].isMorphed = true;
+      }
+
+      this.transitionState = 'playing';
+      this.video.play();
+    }
+  }
+  
+  drawAsciiArt() {
+    // 먼저 비디오의 현재 프레임을 기반으로 목표 문자를 업데이트합니다.
+    this.prepareMorphTarget();
+
+    if (this.video.pixels.length === 0) return;
+
+    const now = millis();
+    const songTime = song.currentTime(); // 메인 스케치의 전역 song 변수 참조
+
+    // --- 기존 문자 기반 아스키 아트 ---
+    let bgColor = 255;
+    const bgAnimElapsedTime = now - this.sweepStartTime;
+    if (bgAnimElapsedTime >= 0) {
+      if (bgAnimElapsedTime < this.bgHoldDuration) {
+        bgColor = 180;
+      } else if (bgAnimElapsedTime < this.bgHoldDuration + this.bgFadeDuration) {
+        bgColor = map(bgAnimElapsedTime - this.bgHoldDuration, 0, this.bgFadeDuration, 150, 255);
+      }
+    }
+    background(bgColor);
+
+    textAlign(CENTER, CENTER);
+    textSize(this.glyphSize);
+    fill(0);
+
+    const offsetX = (width - this.finalCols * this.cellSize) / 2;
+    const offsetY = (height - this.finalRows * this.cellSize) / 2;
+
+    if (songTime > 190.5 && now - this.lastColorChangeTime > this.colorChangeInterval) {
+      this.lastColorChangeTime = now;
+      this.sweepStartTime = now;
+      this.shuffledCols = shuffle(Array.from({ length: this.finalCols }, (_, i) => i));
+      const newTargetColor = color(random(255), random(255), random(255));
+      for (const cell of this.gridData) {
+        cell.targetColor = newTargetColor;
+      }
+    }
+
+    const sweepProgress = constrain((now - this.sweepStartTime) / this.sweepDuration, 0, 1);
+    const numColsToColor = floor(sweepProgress * this.finalCols);
+    const colsToColorSet = new Set(this.shuffledCols.slice(0, numColsToColor));
+
+    for (let i = 0; i < this.gridData.length; i++) {
+      const cell = this.gridData[i];
+      const x = offsetX + (i % this.finalCols) * this.cellSize + this.cellSize / 2;
+      const y = offsetY + floor(i / this.finalCols) * this.cellSize + this.cellSize / 2;
+
+      const currentCol = i % this.finalCols;
+      if (cell.targetColor && colsToColorSet.has(currentCol)) {
+        cell.color = cell.targetColor;
+      }
+
+      // 2분 42초(162초) 이후에는 원을 그립니다.
+      if (songTime > 192) {
+        // 비디오 픽셀에서 직접 밝기 정보를 가져옵니다.
+        // cell.color는 다른 애니메이션(색상 쓸기)에 사용되므로,
+        // 원 패턴의 밝기 기준으로는 비디오의 원본 밝기를 사용해야 합니다.
+        const videoX = floor(map(currentCol + 0.5, 0, this.finalCols, 0, this.video.width));
+        const videoY = floor(map(floor(i / this.finalCols) + 0.5, 0, this.finalRows, 0, this.video.height));
+        const pixelIndex = (videoY * this.video.width + videoX) * 4;
+        const r = this.video.pixels[pixelIndex];
+        const g = this.video.pixels[pixelIndex + 1];
+        const b = this.video.pixels[pixelIndex + 2];
+        const brightness = (r + g + b) / 3;
+
+        const patternIndex = floor(map(brightness, 0, 255, this.circlePatterns.length - 1, 0));
+        const pattern = this.circlePatterns[constrain(patternIndex, 0, this.circlePatterns.length - 1)];
+        
+        this.drawCirclePattern(x, y, pattern);
+      } else {
+        fill(cell.color);
+        text(cell.targetChar, x, y);
+      }
+    }
+  }
+
+  drawCirclePattern(x, y, pattern) {
+    noStroke();
+    // 패턴에 따라 여러 개의 원을 겹쳐 그립니다.
+    // 큰 원부터 그려야 작은 원이 위에 그려집니다.
+    for (const circleInfo of pattern) {
+      fill(this.circleColors[circleInfo.color]);
+      ellipse(x, y, circleInfo.size, circleInfo.size);
+    }
+  }
+
+  // 메인 스케치의 keyPressed에서 호출됩니다.
+  keyPressed() {
+    if (key === ' ') {
+      // 이 씬에서는 스페이스바 기능을 비활성화합니다.
+    }
+  }
+}

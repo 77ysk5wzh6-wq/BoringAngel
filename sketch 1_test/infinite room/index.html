@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>p5.js example</title>
+  <style>
+    body {
+      padding: 0;
+      margin: 0;
+      background-color: #000000; /* 캔버스와 배경을 구분하기 위해 색을 약간 바꿉니다 */
+      /* Flexbox를 사용하여 자식 요소를 중앙 정렬합니다 */
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh; /* body의 높이를 화면 전체 높이로 설정합니다 */
+    }
+    /* p5.js가 캔버스를 main 태그 안에 생성하므로, main 태그에 대한 스타일은 필요 없습니다. */
+    
+    #glass-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none; /* 클릭 이벤트를 통과시킵니다 */
+      z-index: 10; /* 캔버스 위에 표시 */
+      
+      /* 블러 효과 */
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px); /* Safari 지원 */
+      
+      /* 중앙 구멍 뚫기 (마스크) */
+      /* radial-gradient: 중앙(투명) -> 주변(검정=불투명) */
+      /* mask-image가 검정색인 부분만 보이고, 투명한 부분은 안 보임(즉, 블러가 안 먹힘) */
+      /* 하지만 우리는 '블러가 먹히는 영역'을 정의해야 함. */
+      /* 중앙이 뚫려야 하므로, 중앙은 '투명'해서 블러 레이어가 안 보여야 하고(즉 원본이 보임), */
+      /* 주변은 '불투명'해서 블러 레이어가 보여야 함(즉 블러됨). */
+      /* Rectangular mask using linear gradients */
+      /* 가로 방향(좌우)과 세로 방향(상하) 그라디언트를 겹쳐서 사각형 프레임을 만듭니다. */
+      mask-image: 
+        linear-gradient(to right, black 0%, transparent 15%, transparent 85%, black 100%),
+        linear-gradient(to bottom, black 0%, transparent 15%, transparent 85%, black 100%);
+      -webkit-mask-image: 
+        linear-gradient(to right, black 0%, transparent 15%, transparent 85%, black 100%),
+        linear-gradient(to bottom, black 0%, transparent 15%, transparent 85%, black 100%);
+      
+      /* 두 마스크를 합칩니다 (기본적으로 겹쳐짐) */
+      mask-composite: add;
+      -webkit-mask-composite: source-over;
+
+      opacity: 0;
+      transition: opacity 1s ease-in-out;
+    }
+
+    #glass-overlay.active {
+      opacity: 1;
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/addons/p5.sound.js"></script>
+  <script src="sketch.js"></script>
+  <script src="scene1.js"></script>
+  <script src="scene2.js"></script>
+  <script src="scene3.js"></script>
+  <script src="scene4.js"></script>
+</head>
+<body> 
+  <div id="glass-overlay"></div>
+  <main>
+  </main>
+</body>
+
+</html>
