@@ -202,6 +202,7 @@ class SceneManager {
     }
   }
 
+
   draw() {
     if (this.currentScene) {
       // 음악이 재생 중일 때만 타이머 업데이트
@@ -210,7 +211,12 @@ class SceneManager {
       if (song.isPlaying() && song.currentTime() > 0.1) {
         // --- 씬 전환 로직을 SceneManager 내부로 이동 ---
         const currentTime = song.currentTime();
-        if (currentTime >= 182.1 && this.sceneIndex < 3) { // 씬 3보다 낮은 인덱스일 때만 전환
+
+        // 211초에 엔딩 시퀀스 시작
+        if (currentTime >= 211 && this.sceneIndex === 3 && this.currentScene instanceof Scene4) {
+          this.currentScene.startEndingSequence();
+        }
+        else if (currentTime >= 182.1 && this.sceneIndex < 3) { // 씬 3보다 낮은 인덱스일 때만 전환
           this.showScene(3);
           // return; // 여기서 return하지 않고 바로 아래의 draw()를 실행하도록 변경
         } else if (currentTime >= 144.03 && this.sceneIndex < 2) { // 씬 2보다 낮은 인덱스일 때만 전환

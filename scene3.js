@@ -3,6 +3,9 @@ class Scene3 {
 
     this.SMILE_EMOJI_START_TIME = 180.6;
     this.EMOJI_DURATION = 1.5;
+    this.GATHER_START_TIME = 174; // 중앙으로 모이는 애니메이션 시작 시간
+    this.GATHER_END_TIME = 180.6;   // 중앙으로 모이는 애니메이션 종료 시간
+    this.GATHER_RANDOM_DURATION = 5; // 출발 시간의 무작위 범위 (175~176초)
 
     this.song = song;
     this.video = null; // 비디오 엘리먼트
@@ -191,6 +194,8 @@ class Scene3 {
         targetChar: ' ',
         color: color(0, 0, 255), // 파란색
         isMorphed: false, // morph 애니메이션에서 변환되었는지 여부
+        // --- 중앙으로 모이는 애니메이션을 위한 속성 ---
+        gatherStartTime: 0,
       });
     }
 
@@ -408,6 +413,11 @@ class Scene3 {
       }
 
       this.transitionState = 'playing';
+      // --- 중앙으로 모이는 애니메이션 준비 ---
+      for (const cell of this.gridData) {
+        cell.gatherStartTime = this.GATHER_START_TIME + random(this.GATHER_RANDOM_DURATION);
+      }
+
       this.video.play();
     }
   }
@@ -453,6 +463,34 @@ class Scene3 {
     const sweepProgress = constrain((now - this.sweepStartTime) / this.sweepDuration, 0, 1);
     const numColsToColor = floor(sweepProgress * this.finalCols);
     const colsToColorSet = new Set(this.shuffledCols.slice(0, numColsToColor));
+
+    // --- 175초부터 180초까지 중앙으로 모이는 애니메이션 ---
+    if (songTime >= this.GATHER_START_TIME && songTime < this.GATHER_END_TIME) {
+      const gatherProgress = map(songTime, this.GATHER_START_TIME, this.GATHER_END_TIME, 0, 1);
+      const screenCenterX = width / 2;
+      const screenCenterY = height / 2;
+      const shakeAmount = 1.5; // 미세한 떨림의 강도 (픽셀 단위)
+
+      for (let i = 0; i < this.gridData.length; i++) {
+        const cell = this.gridData[i];
+        const originalX = offsetX + (i % this.finalCols) * this.cellSize + this.cellSize / 2;
+        const originalY = offsetY + floor(i / this.finalCols) * this.cellSize + this.cellSize / 2;
+
+        let currentX = originalX;
+        let currentY = originalY;
+
+        if (songTime >= cell.gatherStartTime) {
+          const cellProgress = map(songTime, cell.gatherStartTime, this.GATHER_END_TIME, 0, 1);
+          currentX = lerp(originalX, screenCenterX, cellProgress);
+          currentY = lerp(originalY, screenCenterY, cellProgress);
+          // 미세한 떨림 효과 추가
+          currentX += random(-shakeAmount, shakeAmount);
+          currentY += random(-shakeAmount, shakeAmount);
+        }
+        text(cell.targetChar, currentX, currentY);
+      }
+      return; // 아래의 일반 그리기 로직을 건너뜁니다.
+    }
 
     for (let i = 0; i < this.gridData.length; i++) {
       const cell = this.gridData[i];

@@ -29,11 +29,21 @@ class Scene4 {
     this.currentZoom = 1.0; // 현재 줌 배율. 애니메이션에 따라 1.0에서 ZOOM_SCALE까지 변함
 
     // --- 애니메이션 상태 관리 ---
-    this.animationPhase = 'INITIAL'; // 애니메이션의 현재 단계를 나타냄 ('INITIAL', 'ANIMATING', 'FINAL', 'ANGEL_MODE')
+    this.animationPhase = 'INITIAL'; // 'INITIAL', 'ANIMATING', 'FINAL', 'ANGEL_MODE', 'FADING_OUT', 'CREDITS'
     this.animationStartTime = 0; // 'ANIMATING' 단계가 시작된 시간을 기록
     this.finalStateStartTime = 0; // 'FINAL' 단계가 시작된 시간을 기록
+    this.fadeOutStartTime = 0; // 'FADING_OUT' 단계 시작 시간
+    this.FADE_OUT_DURATION = 0; // 2초
+    this.creditsStartTime = 0; // 'CREDITS' 단계 시작 시간
+    this.creditsFadeInDuration = 1000; // 크레딧 페이드인 시간 (2초)
 
     this.isReady = false; // setup() 함수가 완료되었는지 여부를 나타내는 플래그
+
+    this.credits = [
+      "Design : Youngik Youn",
+      "Music : Oneohtrix Point Never - Boring Angel",
+      "(made with p5.js and AI assistance)"
+    ];
   }
 
   preload() {
@@ -78,6 +88,8 @@ class Scene4 {
     this.animationPhase = 'ANIMATING';
     this.animationStartTime = millis();
     this.finalStateStartTime = 0;
+    this.fadeOutStartTime = 0;
+    this.creditsStartTime = 0;
 
     this.currentZoom = 1.0;
     this.currentCenterEmojiUpdateInterval = this.SLOW_UPDATE_INTERVAL;
@@ -140,6 +152,27 @@ class Scene4 {
       if (now - this.finalStateStartTime > 4000) { // 4초 후
         this.animationPhase = 'ANGEL_MODE';
       }
+    } else if (this.animationPhase === 'FADING_OUT') {
+      const elapsed = now - this.fadeOutStartTime;
+      const progress = constrain(elapsed / this.FADE_OUT_DURATION, 0, 1);
+
+      // 배경을 현재 배경에서 흰색으로 서서히 변경
+      background(255);
+
+      // 텍스트의 알파값을 255에서 0으로 서서히 변경
+      const textAlpha = lerp(255, 0, progress);
+      this.drawGrid(textAlpha);
+
+      if (progress >= 1) {
+        this.animationPhase = 'CREDITS';
+        this.creditsStartTime = now;
+      }
+      pop(); // draw() 시작의 push()에 대한 pop
+      return; // 아래 로직 건너뛰기
+    } else if (this.animationPhase === 'CREDITS') {
+      this.drawCredits();
+      pop(); // draw() 시작의 push()에 대한 pop
+      return; // 아래 로직 건너뛰기
     }
 
     push();
@@ -175,6 +208,15 @@ class Scene4 {
     // 이 씬에서는 키 입력에 따른 동작이 없습니다.
   }
 
+  // sketch.js에서 호출될 엔딩 시퀀스 시작 함수
+  startEndingSequence() {
+    // FADING_OUT 또는 CREDITS 상태가 아닐 때만 상태를 변경합니다. (중복 호출 방지)
+    if (this.animationPhase !== 'FADING_OUT' && this.animationPhase !== 'CREDITS') {
+      this.animationPhase = 'FADING_OUT';
+      this.fadeOutStartTime = millis();
+    }
+  }
+
   prepareInitialGrid() {
     this.emojiGrid = [];
     this.emptyCellIndices = [];
@@ -208,11 +250,12 @@ class Scene4 {
     }
   }
 
-  drawGrid() {
+  drawGrid(alpha = 255) {
     const cellWidth = width / this.gridSize;
     const cellHeight = height / this.gridSize;
     textSize(min(cellWidth, cellHeight) * 0.8);
-
+    fill(0, alpha); // 글자 색상 및 투명도 설정
+    
     const viewX = (width / 2) - (width / 2 / this.currentZoom);
     const viewY = (height / 2) - (height / 2 / this.currentZoom);
     const viewWidth = width / this.currentZoom;
@@ -242,5 +285,22 @@ class Scene4 {
         text(emojiToDraw, x, y);
       }
     }
+  }
+
+  drawCredits() {
+    background(255); // 흰색 배경
+
+    const elapsed = millis() - this.creditsStartTime;
+    // 2초에 걸쳐 서서히 나타나는 알파값 계산
+    const alpha = constrain(map(elapsed, 0, this.creditsFadeInDuration, 0, 255), 0, 255);
+
+    fill(0, alpha); // 검은색 글씨
+    textAlign(CENTER, CENTER);
+    textSize(18); // 약간 작은 글씨
+    textFont('sans-serif');
+    textStyle(NORMAL); // 다른 씬의 textStyle(BOLD) 영향 제거
+
+    // 크레딧 텍스트를 줄 간격을 두고 표시
+    text(this.credits.join('\n\n'), width / 2, height / 2);
   }
 }
