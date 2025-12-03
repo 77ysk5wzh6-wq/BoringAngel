@@ -50,16 +50,7 @@ function draw() {
   // 현재 활성화된 씬의 draw() 함수를 실행합니다.
   sceneManager.draw();
 
-  // --- Glassmorphism Overlay Control ---
-  // Scene 1(index 0)일 때만 오버레이 활성화
-  const glassOverlay = document.getElementById('glass-overlay');
-  if (glassOverlay) {
-    if (sceneManager.sceneIndex === 0) {
-      glassOverlay.classList.add('active');
-    } else {
-      glassOverlay.classList.remove('active');
-    }
-  }
+
 
 
   // --- 타이머 표시 ---

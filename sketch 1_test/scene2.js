@@ -154,6 +154,7 @@ class Scene2 {
 
   setup() {
     this.fft = new p5.FFT(0.8, 512); // Scene2를 위한 FFT 객체 초기화
+    this.amp = new p5.Amplitude(); // 볼륨 분석을 위한 객체 초기화
 
     // --- 상태 초기화 ---
     this.currentWord = '';
@@ -473,31 +474,52 @@ class Scene2 {
     const cellHeight = height / this.gridRows;
     const textSizeValue = cellHeight;
 
+    // --- RGB Delay (CMY Split) Effect ---
+    let vol = this.amp.getLevel();
+    let offset = map(vol, 0, 1, 0, 1.5); // 배경 그리드는 더 작은 오프셋 사용
+    let shakeAmt = map(vol, 0, 1, 0, 2); // 배경 그리드는 더 작은 떨림 사용
+
     push(); // 텍스트 스타일 설정
     textFont('sans-serif');
     textSize(textSizeValue);
-    fill(0, 0, 255);
+    textAlign(CENTER, CENTER);
 
     // 볼드 효과가 활성화되었고, 현재 비트가 홀수일 때만 볼드 스타일 적용
     const isBoldBeat = isBoldEffectActive && (floor(millis() / this.boldBeatDuration) % 2 !== 0);
 
     for (let j = 0; j < this.gridRows; j++) {
       for (let i = 0; i < this.gridCols; i++) {
-        // 각 셀을 그리기 전에 텍스트 스타일 초기화
-        textAlign(CENTER, CENTER);
-        textStyle(NORMAL);
-
-        if (isBoldBeat && this.boldWordIndices.some(bounds => (j * this.gridCols + i) >= bounds.start && (j * this.gridCols + i) < bounds.end)) {
-          textStyle(BOLD);
-        }
-
         const gridIndex = j * this.gridCols + i;
         const cell = this.finalGridState[gridIndex];
+
         if (cell && cell.revealed) {
           const char = cell.char;
           const x = i * cellWidth + cellWidth / 2;
           const y = j * cellHeight + cellHeight / 2;
-          text(char, x, y);
+
+          // 볼드 스타일 설정
+          textStyle(NORMAL);
+          if (isBoldBeat && this.boldWordIndices.some(bounds => gridIndex >= bounds.start && gridIndex < bounds.end)) {
+            textStyle(BOLD);
+          }
+
+          // CMY Split with shake
+          push();
+          blendMode(MULTIPLY);
+
+          // Cyan Channel
+          fill(0, 255, 255);
+          let shakeX_cyan = random(-shakeAmt, shakeAmt);
+          let shakeY_cyan = random(-shakeAmt, shakeAmt);
+          text(char, x - offset + shakeX_cyan, y - offset + shakeY_cyan);
+
+          // Magenta Channel
+          fill(255, 0, 255);
+          let shakeX_magenta = random(-shakeAmt, shakeAmt);
+          let shakeY_magenta = random(-shakeAmt, shakeAmt);
+          text(char, x + offset + shakeX_magenta, y + offset + shakeY_magenta);
+
+          pop();
         }
       }
     }
@@ -670,7 +692,38 @@ class Scene2 {
       let newSize = initialSize * ((width - padding) / textW);
       textSize(newSize);
     }
-    text(this.currentWord, width / 2, height / 2);
+
+    // --- RGB Delay (CMY Split) Effect ---
+    let vol = this.amp.getLevel();
+    let offset = map(vol, 0, 1, 0, 3); // 볼륨에 따라 오프셋 조절 (최대 5px)
+
+    // 떨림 효과 추가 (볼륨에 비례)
+    let shakeAmt = map(vol, 0, 1, 0, 5);
+
+    push();
+    blendMode(MULTIPLY); // 흰색 배경에서는 MULTIPLY 모드 사용
+
+    // Cyan Channel (Red 흡수)
+    fill(0, 255, 255, alpha);
+    let shakeX_cyan = random(-shakeAmt, shakeAmt);
+    let shakeY_cyan = random(-shakeAmt, shakeAmt);
+    text(this.currentWord, width / 2 - offset + shakeX_cyan, height / 2 - offset + shakeY_cyan);
+
+    // Magenta Channel (Green 흡수)
+    fill(255, 0, 255, alpha);
+    let shakeX_magenta = random(-shakeAmt, shakeAmt);
+    let shakeY_magenta = random(-shakeAmt, shakeAmt);
+    text(this.currentWord, width / 2 + offset + shakeX_magenta, height / 2 + offset + shakeY_magenta);
+
+    // Yellow Channel (Blue 흡수) - 선택 사항이지만 더 풍부한 색감을 위해 추가
+    // fill(255, 255, 0, alpha);
+    // text(this.currentWord, width / 2, height / 2); 
+
+    // 원래 텍스트가 파란색(0,0,255)이므로 Cyan + Magenta가 겹치면 파란색이 됩니다.
+    // Yellow를 추가하면 검은색에 가까워지므로, 파란색을 유지하려면 Cyan과 Magenta만 사용합니다.
+
+    pop();
+    // text(this.currentWord, width / 2, height / 2); // 기존 코드 제거
   }
 
   drawFullPoem() {
