@@ -36,16 +36,6 @@ function setup() {
   // 모든 씬의 setup()을 호출합니다.
   sceneManager.setup();
   sceneManager.showScene(0); // 첫 번째 씬으로 시작
-
-  // 모바일 환경일 경우, 5초 후에 자동으로 재생을 시작합니다.
-  if (isMobile) {
-    setTimeout(() => {
-      // 씬1에 있고, 노래가 재생 중이 아닐 때만 시작합니다.
-      if (sceneManager.sceneIndex === 0 && !song.isPlaying()) {
-        sceneManager.currentScene.togglePlay();
-      }
-    }, 5000); // 5000ms = 5초
-  }
 }
 
 function draw() {
@@ -159,8 +149,8 @@ function keyPressed() {
 }
 
 function mousePressed() {
-  // 모바일이 아닐 때만 터치/클릭으로 시작/일시정지
-  if (!isMobile && sceneManager.currentScene && sceneManager.currentScene.mousePressed) {
+  // 모든 환경(PC, 모바일)에서 터치/클릭으로 시작/일시정지
+  if (sceneManager.currentScene && sceneManager.currentScene.mousePressed) {
     sceneManager.currentScene.mousePressed();
   }
 }

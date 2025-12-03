@@ -697,6 +697,20 @@ class Scene1 {
       text('🎻',width/2, height/2);
       pop();
     }
+
+    // --- "터치하여 시작" 안내 문구 ---
+    // 노래가 재생 중이 아니고, 첫 번째 씬일 때만 표시
+    if (!this.song.isPlaying() && sceneManager.sceneIndex === 0) {
+      push();
+      textAlign(CENTER, CENTER);
+      textSize(20);
+      fill(255); // 흰색
+      // 깜빡이는 효과를 위해 1초마다 보였다 안보였다 함
+      if (floor(millis() / 1000) % 2 === 0) {
+        text("Touch to Start", width / 2, height / 2 + 50);
+      }
+      pop();
+    }
   }
 
   // 재생/일시정지 로직을 별도 함수로 분리
