@@ -699,57 +699,67 @@ class Scene1 {
     }
   }
 
-  keyPressed() {
-    // 스페이스바를 누르면 재생/일시정지 토글
-    if (keyCode === 32) { // 32 is the keycode for SPACEBAR
-      if (this.song.isPlaying()) {
-        this.pauseStartTime = millis(); // maxRect 애니메이션 멈춘 시간 기록
-        this.minRectPauseStartTime = millis(); // minRect 애니메이션 멈춘 시간 기록
-        this.centerCirclePauseStartTime = millis(); // centerCircle 애니메이션 멈춘 시간 기록
-        this.stretchAnimationPauseStartTime = millis(); // stretch 애니메이션 멈춘 시간 기록
-        this.circleA_pauseStartTime = millis();
-        this.circleB_pauseStartTime = millis();
-        this.staffAnimationPauseStartTime = millis();
-        // flashRect 애니메이션은 멈추지 않고 계속 진행되도록 둡니다.
-        this.song.pause();
-      } else {
-        // 멈춘 상태에서 다시 재생할 때, 멈춰있던 시간만큼 애니메이션 시작 시간을 보정
-        if (this.animationState === 'animating' && this.pauseStartTime) {
-          this.animationStartTime += millis() - this.pauseStartTime;
-        }
-        if (this.minRectAnimationState === 'animating' && this.minRectPauseStartTime) {
-          this.minRectAnimationStartTime += millis() - this.minRectPauseStartTime;
-        }
-        if (this.centerCircleAnimationState === 'animating' && this.centerCirclePauseStartTime) {
-          this.centerCircleAnimationStartTime += millis() - this.centerCirclePauseStartTime;
-        }
-        if (this.stretchAnimationState === 'animating' && this.stretchAnimationPauseStartTime) {
-          this.stretchAnimationStartTime += millis() - this.stretchAnimationPauseStartTime;
-        }
-        if (this.circleA_animationState === 'animating' && this.circleA_pauseStartTime) {
-          this.circleA_animationStartTime += millis() - this.circleA_pauseStartTime;
-        }
-        if (this.circleB_animationState === 'animating' && this.circleB_pauseStartTime) {
-          this.circleB_animationStartTime += millis() - this.circleB_pauseStartTime;
-        }
-        if (this.staffAnimationState === 'animating' && this.staffAnimationPauseStartTime) {
-          this.staffAnimationStartTime += millis() - this.staffAnimationPauseStartTime;
-        }
-        if (this.flashWhiteState === 'animating') {
-          // flashWhite는 짧아서 일시정지 보정 로직을 생략합니다.
-        }
-        if (this.screenFlashState === 'flashing') {
-          this.screenFlashStartTime += millis() - this.pauseStartTime;
-        }
-        if (this.flashWhite2State === 'animating') {
-          // 짧아서 생략
-        }
-        if (this.screenFlash2State === 'flashing') {
-          this.screenFlash2StartTime += millis() - this.pauseStartTime;
-        }
-        this.song.play();
-        this.song.setVolume(0.8);
+  // 재생/일시정지 로직을 별도 함수로 분리
+  togglePlay() {
+    if (this.song.isPlaying()) {
+      this.pauseStartTime = millis(); // maxRect 애니메이션 멈춘 시간 기록
+      this.minRectPauseStartTime = millis(); // minRect 애니메이션 멈춘 시간 기록
+      this.centerCirclePauseStartTime = millis(); // centerCircle 애니메이션 멈춘 시간 기록
+      this.stretchAnimationPauseStartTime = millis(); // stretch 애니메이션 멈춘 시간 기록
+      this.circleA_pauseStartTime = millis();
+      this.circleB_pauseStartTime = millis();
+      this.staffAnimationPauseStartTime = millis();
+      // flashRect 애니메이션은 멈추지 않고 계속 진행되도록 둡니다.
+      this.song.pause();
+    } else {
+      // 멈춘 상태에서 다시 재생할 때, 멈춰있던 시간만큼 애니메이션 시작 시간을 보정
+      if (this.animationState === 'animating' && this.pauseStartTime) {
+        this.animationStartTime += millis() - this.pauseStartTime;
       }
+      if (this.minRectAnimationState === 'animating' && this.minRectPauseStartTime) {
+        this.minRectAnimationStartTime += millis() - this.minRectPauseStartTime;
+      }
+      if (this.centerCircleAnimationState === 'animating' && this.centerCirclePauseStartTime) {
+        this.centerCircleAnimationStartTime += millis() - this.centerCirclePauseStartTime;
+      }
+      if (this.stretchAnimationState === 'animating' && this.stretchAnimationPauseStartTime) {
+        this.stretchAnimationStartTime += millis() - this.stretchAnimationPauseStartTime;
+      }
+      if (this.circleA_animationState === 'animating' && this.circleA_pauseStartTime) {
+        this.circleA_animationStartTime += millis() - this.circleA_pauseStartTime;
+      }
+      if (this.circleB_animationState === 'animating' && this.circleB_pauseStartTime) {
+        this.circleB_animationStartTime += millis() - this.circleB_pauseStartTime;
+      }
+      if (this.staffAnimationState === 'animating' && this.staffAnimationPauseStartTime) {
+        this.staffAnimationStartTime += millis() - this.staffAnimationPauseStartTime;
+      }
+      if (this.flashWhiteState === 'animating') {
+        // flashWhite는 짧아서 일시정지 보정 로직을 생략합니다.
+      }
+      if (this.screenFlashState === 'flashing') {
+        this.screenFlashStartTime += millis() - this.pauseStartTime;
+      }
+      if (this.flashWhite2State === 'animating') {
+        // 짧아서 생략
+      }
+      if (this.screenFlash2State === 'flashing') {
+        this.screenFlash2StartTime += millis() - this.pauseStartTime;
+      }
+      this.song.play();
+      this.song.setVolume(0.8);
     }
+  }
+
+  // 스페이스바를 누르면 재생/일시정지 토글
+  keyPressed() {
+    if (keyCode === 32) { // 32 is the keycode for SPACEBAR
+      this.togglePlay();
+    }
+  }
+
+  // 화면을 터치(클릭)하면 재생/일시정지 토글
+  mousePressed() {
+    this.togglePlay();
   }
 }
