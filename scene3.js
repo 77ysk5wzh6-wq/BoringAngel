@@ -137,7 +137,7 @@ class Scene3 {
     // --- 하이라이트 색상 인덱스 리셋 ---
     this.highlightColorIndex = 0;
 
-    frameRate(30); // 비디오 프레임레이트와 유사하게 설정
+    frameRate(60); // 비디오 프레임레이트와 유사하게 설정
   }
 
   // 메인 스케치의 draw에서 호출됩니다.

@@ -1317,9 +1317,28 @@ class Scene2 {
     }
   }
 
-  wholeNote(x, y, barChance = random(), dotChance = random(), alpha = 255, sizeMultiplier = 1.0) { stroke(0, alpha); strokeWeight(2 * sizeMultiplier); noFill(); push(); translate(x, y); rotate(PI / 12); fill(0, alpha); ellipse(0, 0, this.note_width * 1.1 * sizeMultiplier, this.note_height * sizeMultiplier); fill(255, alpha); rotate(-PI / 6); ellipse(0, 0, this.note_width * 0.7 * sizeMultiplier, this.note_height * 1.08 * sizeMultiplier); rotate(PI / 12); rectMode(CENTER); strokeWeight(1 * sizeMultiplier); stroke(0, alpha); if (barChance < 0.08) { rect(0, 0, 20 * sizeMultiplier, 1 * sizeMultiplier); } else if (barChance < 0.16) { rect(0, -(this.note_height / 2) * 1.4 * sizeMultiplier, this.note_width * sizeMultiplier, 1 * sizeMultiplier); } else if (barChance < 0.24) { rect(0, (this.note_height / 2) * 1.4 * sizeMultiplier, this.note_width * sizeMultiplier, 1 * sizeMultiplier); } else if (barChance < 0.32) { rect(0, (this.note_height / 2) * 1.4 * sizeMultiplier, this.note_width * sizeMultiplier, 1 * sizeMultiplier); rect(0, (this.note_height / 2) * 1.4 * 2 * sizeMultiplier, this.note_width * sizeMultiplier, 1 * sizeMultiplier); } else if (barChance < 0.4) { rect(0, -(this.note_height / 2) * 1.4 * sizeMultiplier, this.note_width * sizeMultiplier, 1 * sizeMultiplier); rect(0, -(this.note_height / 2) * 1.4 * 2 * sizeMultiplier, this.note_width * sizeMultiplier, 1 * sizeMultiplier); } else { } if (dotChance < 0.2) { push(); fill(0, alpha); circle(15 * sizeMultiplier, -7 * sizeMultiplier, 3 * sizeMultiplier); pop(); } pop(); }
-  halfNote(x, y, isRotated = random() < 0.5, barChance = random(), dotChance = random(), alpha = 255, sizeMultiplier = 1.0) { push(); translate(x, y); if (isRotated) { rotate(PI); } rotate(-PI / 8); fill(0, alpha); ellipse(0, 0, this.note_width * sizeMultiplier, this.note_height * sizeMultiplier); fill(255, alpha); ellipse(0, 0, this.note_width * sizeMultiplier, this.note_height * 0.7 * sizeMultiplier); rotate(PI / 8); rectMode(CENTER); strokeWeight(1 * sizeMultiplier); stroke(0, alpha); if (barChance < 0.15) { rect(0, 0, 20 * sizeMultiplier, 1 * sizeMultiplier); } else if (barChance < 0.3) { rect(0, -(this.note_height / 2) * 1.4 * sizeMultiplier, this.note_width * sizeMultiplier, 1 * sizeMultiplier); } else if (barChance < 0.45) { rect(0, (this.note_height / 2) * 1.4 * sizeMultiplier, this.note_width * sizeMultiplier, 1 * sizeMultiplier); } else { } pop(); strokeWeight(1.6 * sizeMultiplier); stroke(0, alpha); if (isRotated) { line(x + (this.note_width / 2 - 0.3) * sizeMultiplier, y, x + (this.note_width / 2) * sizeMultiplier, y + this.note_stem * sizeMultiplier); if (dotChance < 0.2) { push(); fill(0, alpha); circle(x + 15 * sizeMultiplier, y - 7 * sizeMultiplier, 3 * sizeMultiplier); pop(); } } else { line(x + (this.note_width / 2 - 0.3) * sizeMultiplier, y, x + (this.note_width / 2) * sizeMultiplier, y - this.note_stem * sizeMultiplier); if (dotChance < 0.15) { push(); fill(0, alpha); circle(x + 15 * sizeMultiplier, y - 7 * sizeMultiplier, 3 * sizeMultiplier); pop(); } } }
-  quarterNote(x, y, isRotated = random() < 0.5, barChance = random(), dotChance = random(), alpha = 255, sizeMultiplier = 1.0) { push(); translate(x, y); if (isRotated) { rotate(PI); } rotate(-PI / 8); fill(0, alpha); ellipse(0, 0, this.note_width * sizeMultiplier, this.note_height * sizeMultiplier); rotate(PI / 8); rectMode(CENTER); strokeWeight(1 * sizeMultiplier); stroke(0, alpha); if (barChance < 0.15) { rect(0, 0, 20 * sizeMultiplier, 1 * sizeMultiplier); } else if (barChance < 0.3) { rect(0, -(this.note_height / 2) * 1.4 * sizeMultiplier, this.note_width * sizeMultiplier, 1 * sizeMultiplier); } else if (barChance < 0.45) { rect(0, (this.note_height / 2) * 1.4 * sizeMultiplier, this.note_width * sizeMultiplier, 1 * sizeMultiplier); } else { } pop(); strokeWeight(1.6 * sizeMultiplier); stroke(0, alpha); if (isRotated) { line(x + (this.note_width / 2 - 0.3) * sizeMultiplier, y, x + (this.note_width / 2) * sizeMultiplier, y + this.note_stem * sizeMultiplier); if (dotChance < 0.2) { push(); fill(0, alpha); circle(x + 15 * sizeMultiplier, y - 7 * sizeMultiplier, 3 * sizeMultiplier); pop(); } } else { line(x + (this.note_width / 2 - 0.3) * sizeMultiplier, y, x + (this.note_width / 2) * sizeMultiplier, y - this.note_stem * sizeMultiplier); if (dotChance < 0.2) { push(); fill(0, alpha); circle(x + 15 * sizeMultiplier, y - 7 * sizeMultiplier, 3 * sizeMultiplier); pop(); } } }
+  wholeNote(x, y, barChance, dotChance, alpha = 255, sizeMultiplier = 1.0) {
+    this.drawNoteWithBravura(this.BRAVURA_SYMBOLS.WHOLE_NOTE, x, y, 53, alpha, sizeMultiplier);
+  }
+  halfNote(x, y, isRotated, barChance, dotChance, alpha = 255, sizeMultiplier = 1.0) {
+    this.drawNoteWithBravura(this.BRAVURA_SYMBOLS.HALF_NOTE, x, y, 53, alpha, sizeMultiplier);
+  }
+  quarterNote(x, y, isRotated, barChance, dotChance, alpha = 255, sizeMultiplier = 1.0) {
+    this.drawNoteWithBravura(this.BRAVURA_SYMBOLS.QUARTER_NOTE, x, y, 53, alpha, sizeMultiplier);
+  }
+
+  // Bravura 폰트로 음표를 그리는 헬퍼 함수
+  drawNoteWithBravura(symbol, x, y, size = 53, alpha = 255, sizeMultiplier = 1.0) {
+    if (this.bravuraFont) {
+      textFont(this.bravuraFont);
+    }
+    textAlign(CENTER, CENTER);
+    textSize(size * sizeMultiplier);
+    noStroke();
+    fill(0, alpha);
+    text(symbol, x, y);
+  }
+
   drawStaff(y, alpha = 255) { stroke(0, alpha); strokeWeight(1); let startX = 50; let endX = width - 50; let lineSpacing = this.note_height; for (let i = 0; i < 5; i++) { let y1 = y - (2 * lineSpacing) + (i * lineSpacing); line(startX, y1, endX, y1); } }
   drawTrebleClef(x, y, size = 50, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.TREBLE_CLEF, x, y); }
   drawBassClef(x, y, size = 50, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.BASS_CLEF, x, y); }
@@ -1499,7 +1518,7 @@ class BeamNote {
     translate(x, y);
     rotate(-PI / 8);
     fill(0, alpha);
-    ellipse(0, 0, note_width * sizeMultiplier, note_height * sizeMultiplier);
+    ellipse(0, 0, note_width * sizeMultiplier * 0.85, note_height * sizeMultiplier * 0.85);
     pop();
   }
 
