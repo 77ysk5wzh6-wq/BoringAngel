@@ -51,11 +51,6 @@ class Scene3 {
     this.currentScale = 1; // 줌 효과는 사용하지 않으므로 1로 고정
     this.targetScale = 1;
     this.isReady = false; // 에셋 로딩 및 파싱 완료 여부
-    this.shakePixel = 0.5; // Scene4와 동일한 떨림 강도
-
-    // --- 원 그리기 설정 ---
-    this.circleColors = {};
-    this.circlePatterns = [];
 
     // --- '6' 키 임팩트 효과 변수 ---
     this.impactActive = false;
@@ -72,6 +67,12 @@ class Scene3 {
     this.jumpAnimationDuration = 200; // 0.2초
     this.baseJumpProbability = 0.005; // 5%
   }
+  
+  // --- 하이라이트 및 점프 확률 계산을 위한 상수 ---
+  static get HIGHLIGHT_FADE_START_TIME() { return 170; } // 2분 50초
+  static get HIGHLIGHT_FADE_DURATION() { return 5; }     // 4초
+  static get HIGHLIGHT_BASE_PROBABILITY() { return 0.2; }
+  static get JUMP_BASE_PROBABILITY() { return 0.005; }
 
   preload() {
     // 폰트는 외부에서 전달받으므로, 이 씬에서는 preload할 것이 없습니다.
@@ -101,29 +102,6 @@ class Scene3 {
 
     this.isReady = true;
 
-    // --- 원 그리기 색상 및 패턴 정의 ---
-    this.circleColors = {
-      color1: color(255, 0, 0),       // 빨강
-      color2: color(172, 198, 246), // 연한 하늘색
-      color3: color(95, 20, 18),        // 자주색
-      color4: color(115, 70, 142),    // 보라색
-      color5: color(69, 151, 239),    // 파란색
-      color6: color(113, 219, 246), // 형광 하늘색
-      color7: color(39, 38, 43)        // 검정
-    };
-
-    // 밝기가 어두운 순서대로 패턴 정의
-    const cellD = this.cellSize;
-    this.circlePatterns = [
-      [{ color: 'color7', size: cellD / 1.2 }, { color: 'color3', size: cellD / 2 }],
-      [{ color: 'color7', size: cellD / 1.2 }, { color: 'color4', size: cellD / 1.6 }, { color: 'color3', size: cellD / 2.6 }],
-      [{ color: 'color4', size: cellD / 1.2 }, { color: 'color7', size: cellD / 2 }],
-      [{ color: 'color7', size: cellD / 1.2 }, { color: 'color2', size: cellD / 1.6 }, { color: 'color5', size: cellD / 2 }],
-      [{ color: 'color5', size: cellD / 1.2 }, { color: 'color1', size: cellD / 1.6 }],
-      [{ color: 'color2', size: cellD / 1.2 }, { color: 'color6', size: cellD / 1.4 }, { color: 'color5', size: cellD / 2.3 }],
-      [{ color: 'color2', size: cellD / 1.2 }, { color: 'color6', size: cellD / 2 }]
-    ];
-    
     console.log("Scene 3 is set up and ready.");
     console.log(`Grid: ${this.cols}x${this.rows}`);
     console.log(`Using ${this.asciiGlyphs.length} glyphs: ${this.asciiGlyphs.join('')}`);
@@ -165,7 +143,7 @@ class Scene3 {
       textAlign(CENTER, CENTER);
       translate(random(-this.shakePixel, this.shakePixel), random(-this.shakePixel, this.shakePixel)); // 떨림 효과 적용
       fill(random(245, 255), 20);
-      rectMode(CENTER);
+      rectMode(CENTER); // 이모지 뒤 배경 사각형
       rect(width / 2, height / 2, windowWidth, windowHeight);
       const scene4GridSize = 39;
       const emojiSize = min(width / scene4GridSize, height / scene4GridSize) * 0.8;
@@ -330,7 +308,7 @@ class Scene3 {
         const cell = this.gridData[gridIdx];
         cell.color = color(0); // 검은색으로 변경
         // 색상이 변경되는 순간 하이라이트 트리거
-        if (random() < 0.3) { // 30% 확률
+        if (random() < 0.2) { // 30% 확률
           cell.highlightStartTime = now;
           cell.highlightColor = color(random(130, 255), random(50, 200), random(200, 255), 40);
         }
@@ -377,7 +355,7 @@ class Scene3 {
           // 초기 30x18 영역 밖의 셀에만 무작위 문자를 채웁니다.
           cell.char = random(this.randomChars.split(''));
           // 문자가 변경되는 순간 하이라이트 트리거
-          if (random() < 0.3) { // 30% 확률
+          if (random() < 0.2) { // 30% 확률
             cell.highlightStartTime = now;
             cell.highlightColor = color(random(130, 255), random(50, 200), random(200, 255), 40);
           }
@@ -423,20 +401,6 @@ class Scene3 {
   }
 
   prepareMorphTarget() {
-    const songTime = this.song.currentTime();
-    const HIGHLIGHT_FADE_START_TIME = 170; // 2분 50초
-    const HIGHLIGHT_FADE_DURATION = 4;     // 4초
-    const HIGHLIGHT_FADE_END_TIME = HIGHLIGHT_FADE_START_TIME + HIGHLIGHT_FADE_DURATION;
-
-    let highlightProbability = 0.3; // 기본 확률
-
-    if (songTime >= HIGHLIGHT_FADE_START_TIME && songTime < HIGHLIGHT_FADE_END_TIME) {
-      // 170초부터 174초까지 확률을 0.5에서 0으로 점차 줄입니다.
-      highlightProbability = map(songTime, HIGHLIGHT_FADE_START_TIME, HIGHLIGHT_FADE_END_TIME, 0.5, 0);
-    } else if (songTime >= HIGHLIGHT_FADE_END_TIME) {
-      highlightProbability = 0; // 174초 이후에는 확률을 0으로 고정합니다.
-    }
-
     this.video.loadPixels();
     if (this.video.pixels.length > 0) {
       for (let i = 0; i < this.gridData.length; i++) {
@@ -451,6 +415,8 @@ class Scene3 {
         const brightness = (r + g + b) / 3;
         const glyphIndex = floor((brightness / 255) * (this.asciiGlyphs.length - 1));
         this.gridData[i].targetChar = this.asciiGlyphs[glyphIndex];
+
+        const highlightProbability = this.getDynamicProbability(Scene3.HIGHLIGHT_BASE_PROBABILITY);
 
         // --- 하이라이트 로직: 문자가 변경되었는지 확인 ---
         // 문자가 변경되었고, 50% 확률을 통과하면 하이라이트
@@ -498,7 +464,7 @@ class Scene3 {
       if (!cell.isMorphed && random() < progress * 0.25) {
         cell.isMorphed = true;
         // 글자가 변하는 순간, 30% 확률로 하이라이트 효과를 트리거합니다.
-        if (random() < 0.3) {
+        if (random() < 0.2) {
           cell.highlightStartTime = now;
           cell.highlightColor = color(random(130, 255), random(50, 200), random(200, 255), 40);
         }
@@ -545,18 +511,7 @@ class Scene3 {
     if (now - this.lastJumpTime > this.jumpBeatDuration) {
       this.lastJumpTime = now;
 
-      // 하이라이트 확률과 동일한 로직으로 점프 확률 계산
-      let jumpProbability = this.baseJumpProbability;
-      const FADE_START_TIME = 170; // 2분 50초
-      const FADE_DURATION = 4;     // 4초
-      const FADE_END_TIME = FADE_START_TIME + FADE_DURATION;
-
-      if (songTime >= FADE_START_TIME && songTime < FADE_END_TIME) {
-        jumpProbability = map(songTime, FADE_START_TIME, FADE_END_TIME, this.baseJumpProbability, 0);
-      } else if (songTime >= FADE_END_TIME) {
-        jumpProbability = 0;
-      }
-
+      const jumpProbability = this.getDynamicProbability(Scene3.JUMP_BASE_PROBABILITY);
       if (jumpProbability > 0) {
         const numToJump = floor(this.gridData.length * jumpProbability);
         const shuffledIndices = shuffle(Array.from({ length: this.gridData.length }, (_, i) => i));
@@ -701,37 +656,8 @@ class Scene3 {
         cell.highlightStartTime = 0;
       }
 
-      // 2분 42초(162초) 이후에는 원을 그립니다.
-      if (songTime > 192) {
-        // 비디오 픽셀에서 직접 밝기 정보를 가져옵니다.
-        // cell.color는 다른 애니메이션(색상 쓸기)에 사용되므로,
-        // 원 패턴의 밝기 기준으로는 비디오의 원본 밝기를 사용해야 합니다.
-        const videoX = floor(map(currentCol + 0.5, 0, this.finalCols, 0, this.video.width));
-        const videoY = floor(map(floor(i / this.finalCols) + 0.5, 0, this.finalRows, 0, this.video.height));
-        const pixelIndex = (videoY * this.video.width + videoX) * 4;
-        const r = this.video.pixels[pixelIndex];
-        const g = this.video.pixels[pixelIndex + 1];
-        const b = this.video.pixels[pixelIndex + 2];
-        const brightness = (r + g + b) / 3;
-
-        const patternIndex = floor(map(brightness, 0, 255, this.circlePatterns.length - 1, 0));
-        const pattern = this.circlePatterns[constrain(patternIndex, 0, this.circlePatterns.length - 1)];
-        
-        this.drawCirclePattern(x, y, pattern);
-      } else {
-        fill(cell.color);
-        text(cell.targetChar, x, y);
-      }
-    }
-  }
-
-  drawCirclePattern(x, y, pattern) {
-    noStroke();
-    // 패턴에 따라 여러 개의 원을 겹쳐 그립니다.
-    // 큰 원부터 그려야 작은 원이 위에 그려집니다.
-    for (const circleInfo of pattern) {
-      fill(this.circleColors[circleInfo.color]);
-      ellipse(x, y, circleInfo.size, circleInfo.size);
+      fill(cell.color);
+      text(cell.targetChar, x, y);
     }
   }
 
@@ -751,4 +677,22 @@ class Scene3 {
       }
     }
   }
+
+  getDynamicProbability(baseProbability) {
+    const songTime = this.song.currentTime();
+    const fadeStartTime = Scene3.HIGHLIGHT_FADE_START_TIME;
+    const fadeEndTime = fadeStartTime + Scene3.HIGHLIGHT_FADE_DURATION;
+
+    if (songTime >= fadeStartTime && songTime < fadeEndTime) {
+      return map(songTime, fadeStartTime, fadeEndTime, baseProbability, 0);
+    } else if (songTime >= fadeEndTime) {
+      return 0;
+    }
+    // 170초 이전에는 기본 확률을 반환합니다.
+    return baseProbability;
+  }
 }
+
+color(random(70, 200), random(70, 200), random(200, 255), 40)
+color(random(200, 255), random(70, 200), random(70, 200), 40)
+color(random(70, 200), random(200, 255), random(70, 200), 40)
