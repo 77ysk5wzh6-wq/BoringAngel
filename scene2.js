@@ -150,6 +150,13 @@ class Scene2 {
     this.flashDuration = 200; // 0.2초
     this.flashTriggerTime = 60.12;
     this.flashRectangles = []; // 플래시 효과를 위한 사각형 데이터 배열
+
+    // --- 배경 플래시 효과 변수 ---
+    this.backgroundFlashTime = 0;
+
+    // --- 색상 반전 효과 변수 ---
+    this.isInverting = false;
+    this.inversionStartTime = 0;
   }
 
   setup() {
@@ -174,6 +181,8 @@ class Scene2 {
     this.isStopped = false; // 리셋 시 멈춤 상태 초기화
     this.isFlashing = false; // 리셋 시 플래시 상태 초기화 (새로운 사각형 효과에도 적용)
     this.flashRectangles = []; // 리셋 시 사각형 데이터 초기화
+    this.isInverting = false; // 리셋 시 색상 반전 상태 초기화
+    this.inversionStartTime = 0;
 
     // --- 배경 그리드 데이터 생성 ---
     this.finalGridState = [];
@@ -276,12 +285,18 @@ class Scene2 {
       const FADE_END_TIME = FADE_START_TIME + FADE_DURATION;
 
       if (currentTime < FADE_START_TIME) {
-        // 95초 이전: 항상 흰색 배경
-        background(255);
+        // 95초 이전: 악보 흔들림 시 배경 플래시 효과
+        const now = millis();
+        if (this.backgroundFlashTime > 0 && now - this.backgroundFlashTime < 100) {
+          background(245); // 0.1초 동안 회색 배경
+        } else {
+          this.backgroundFlashTime = 0; // 플래시 시간 지나면 리셋
+          background(255); // 평소에는 흰색 배경
+        }
       } else if (currentTime >= FADE_START_TIME && currentTime < FADE_END_TIME) {
         // 95초에서 97초 사이: 2초에 걸쳐 배경 페이드 아웃
         const alpha = map(currentTime, FADE_START_TIME, FADE_END_TIME, 255, 0);
-        background(255, alpha);
+        background(random(245,255), alpha);
       } else if (currentTime >= this.SCENE_TRANSITION_TIME) {
         // 112초 이후: 다시 흰색 배경
         background(255);
@@ -464,6 +479,15 @@ class Scene2 {
           this.flashRectangles = []; // 모든 사각형이 사라지면 배열을 비웁니다.
         }
         pop();
+      }
+    }
+
+    // --- 색상 반전 효과 ---
+    if (this.isInverting) {
+      if (millis() - this.inversionStartTime < 100) { // 0.1초 동안
+        filter(INVERT);
+      } else {
+        this.isInverting = false; // 0.1초가 지나면 효과 비활성화
       }
     }
 
@@ -763,6 +787,7 @@ class Scene2 {
         // 225BPM 비트에 맞춰 매번 새로운 10%의 요소를 선택합니다.
         if (now - this.lastShakeTime > this.shakeBeatDuration) {
           this.lastShakeTime = now;
+          this.backgroundFlashTime = now; // 배경 플래시 시작 시간 기록
 
           // 최적화: 흔들릴 요소 목록이 비어있으면 한 번만 생성
           if (this.allShakeableElements.length === 0) {
@@ -1298,6 +1323,10 @@ class Scene2 {
         }
 
       }
+    } else if (key === '6') {
+      // '6' 키를 누르면 씬2 전체에서 색상 반전 효과 활성화
+      this.isInverting = true;
+      this.inversionStartTime = millis();
     }
   }
 

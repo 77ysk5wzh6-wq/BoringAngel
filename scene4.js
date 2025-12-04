@@ -6,7 +6,7 @@ class Scene4 {
 
     // --- 상수 정의 ---
     this.INITIAL_GRID_SIZE = 39; // 애니메이션 시작 시 그리드의 크기 (39x39)
-    this.GRID_FILL_DURATION = 10000; // 그리드가 채워지는 데 걸리는 시간 (10초)
+    this.GRID_FILL_DURATION = 14000; // 그리드가 채워지는 데 걸리는 시간 (10초)
     this.ANIMATION_DURATION = 20000; // 전체 줌/속도 애니메이션이 지속되는 시간 (20초)
     this.ZOOM_SCALE = 12.3; // 최종 줌 배율 (12.3배 확대)
 
