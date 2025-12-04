@@ -45,7 +45,8 @@ class Scene3 {
     this.bgFadeDuration = 400; // 0.4초 (배경 흰색으로 복귀)
     this.shuffledCols = []; // 색상 변경을 위해 무작위로 섞인 열 인덱스
 
-    this.randomChars = ".`,-':;~i!lI?rvunogxcyz[]{}1()O0S23456789EZG%#MW&B@$";
+    this.randomChars = ".`,-':;~i!lI?rvunogxcyz[]{}1()O0S9EZG%#MW&B@$";
+    
 
     this.currentScale = 1; // 줌 효과는 사용하지 않으므로 1로 고정
     this.targetScale = 1;
@@ -55,13 +56,29 @@ class Scene3 {
     // --- 원 그리기 설정 ---
     this.circleColors = {};
     this.circlePatterns = [];
+
+    // --- '6' 키 임팩트 효과 변수 ---
+    this.impactActive = false;
+    this.impactCenter = null;
+    this.impactStartTime = 0;
+    this.impactExpandDuration = 10; // 0.1초
+    this.impactContractDuration = 200; // 0.5초
+    this.impactMaxDisplacement = 400; // 최대 이동 거리 (픽셀)
+
+    // --- '점프' 애니메이션 변수 ---
+    this.jumpBpm = 225;
+    this.jumpBeatDuration = 60000 / this.jumpBpm;
+    this.lastJumpTime = 0;
+    this.jumpAnimationDuration = 200; // 0.2초
+    this.baseJumpProbability = 0.005; // 5%
   }
 
   preload() {
     // 폰트는 외부에서 전달받으므로, 이 씬에서는 preload할 것이 없습니다.
     // 비디오 에셋을 preload에서 로드하여 setup 이전에 로딩을 보장합니다.
-    this.video = createVideo(['assets/footage.mp4']);
+    this.video = createVideo(['assets/footage2.mp4']);
   }
+
   
   // 메인 스케치의 setup에서 호출됩니다.
   setup() {
@@ -77,7 +94,8 @@ class Scene3 {
     this.glyphSize = this.cellSize;
 
     // 제공된 문자열은 밀도가 낮은 순서(. -> @)로 정렬되어 있습니다.
-    const densityString = ".`,-':;~i!lI?rvunogxcyz[]{}1()O0S23456789EZG%#MW&B@$";
+    const densityString = ".`,-':;~i!lI?rvunogxcyz[]{}1()O0S9EZG%#MW&B@$";
+    
     // 밝기 매핑을 위해 배열을 뒤집어, 어두울수록 밀도 높은 문자가 선택되도록 합니다.
     this.asciiGlyphs = densityString.split('').reverse();
 
@@ -122,6 +140,12 @@ class Scene3 {
     this.transitionState = 'shrinking';
     this.transitionStartTime = millis();
     this.prepareInitialGrid();
+
+    // --- 임팩트 상태 리셋 ---
+    this.impactActive = false;
+
+    // --- 점프 상태 리셋 ---
+    this.lastJumpTime = 0;
 
     frameRate(30); // 비디오 프레임레이트와 유사하게 설정
   }
@@ -202,6 +226,14 @@ class Scene3 {
         // --- 중앙으로 모이는 애니메이션을 위한 속성 ---
         gatherStartTime: 0,
         gatherEndTime: 0,
+        previousChar: ' ', // 이전 프레임의 문자를 저장
+        highlightStartTime: 0, // 하이라이트 시작 시간
+        highlightColor: null, // 하이라이트 색상
+        impactRandomFactor: 1.0, // '6'키 임팩트 효과의 랜덤 계수
+        // --- 점프 애니메이션 속성 ---
+        isJumping: false,
+        jumpStartTime: 0,
+        jumpDirection: -1, // -1: up, 1: down
       });
     }
 
@@ -279,6 +311,7 @@ class Scene3 {
   updateAndDrawExpansion() {
     const elapsedTime = millis() - this.transitionStartTime;
     const progress = constrain(elapsedTime / this.expansionDuration, 0, 1);
+    const now = millis();
 
     // 현재 진행률에 따라 보여줄 그리드 크기 계산
     const currentCols = floor(lerp(this.initialCols, this.finalCols, progress));
@@ -294,7 +327,13 @@ class Scene3 {
       if (blueIndices.length > 0) {
         const randIdx = floor(random(blueIndices.length));
         const gridIdx = blueIndices.splice(randIdx, 1)[0];
-        this.gridData[gridIdx].color = color(0); // 검은색으로 변경
+        const cell = this.gridData[gridIdx];
+        cell.color = color(0); // 검은색으로 변경
+        // 색상이 변경되는 순간 하이라이트 트리거
+        if (random() < 0.3) { // 30% 확률
+          cell.highlightStartTime = now;
+          cell.highlightColor = color(random(130, 255), random(50, 200), random(200, 255), 40);
+        }
       }
     }
 
@@ -320,14 +359,31 @@ class Scene3 {
         const cell = this.gridData[j * this.finalCols + i];
         if (!cell) continue;
 
-        // 
+        const x = offsetX + i * this.cellSize + this.cellSize / 2;
+        const y = offsetY + j * this.cellSize + this.cellSize / 2;
+
+        // --- 하이라이트 그리기 ---
+        if (cell.highlightStartTime > 0 && now - cell.highlightStartTime < 100) {
+          push();
+          noStroke();
+          fill(cell.highlightColor);
+          rect(x - this.cellSize / 2, y - this.cellSize / 2, this.cellSize, this.cellSize);
+          pop();
+        } else {
+          cell.highlightStartTime = 0;
+        }
+
         if (progress > 0 && random() > 0.988) {
           // 초기 30x18 영역 밖의 셀에만 무작위 문자를 채웁니다.
           cell.char = random(this.randomChars.split(''));
+          // 문자가 변경되는 순간 하이라이트 트리거
+          if (random() < 0.3) { // 30% 확률
+            cell.highlightStartTime = now;
+            cell.highlightColor = color(random(130, 255), random(50, 200), random(200, 255), 40);
+          }
         }
-        
         fill(cell.color);
-        text(cell.char, offsetX + i * this.cellSize + this.cellSize / 2, offsetY + j * this.cellSize + this.cellSize / 2);
+        text(cell.char, x, y);
       }
     }
 
@@ -367,6 +423,20 @@ class Scene3 {
   }
 
   prepareMorphTarget() {
+    const songTime = this.song.currentTime();
+    const HIGHLIGHT_FADE_START_TIME = 170; // 2분 50초
+    const HIGHLIGHT_FADE_DURATION = 4;     // 4초
+    const HIGHLIGHT_FADE_END_TIME = HIGHLIGHT_FADE_START_TIME + HIGHLIGHT_FADE_DURATION;
+
+    let highlightProbability = 0.3; // 기본 확률
+
+    if (songTime >= HIGHLIGHT_FADE_START_TIME && songTime < HIGHLIGHT_FADE_END_TIME) {
+      // 170초부터 174초까지 확률을 0.5에서 0으로 점차 줄입니다.
+      highlightProbability = map(songTime, HIGHLIGHT_FADE_START_TIME, HIGHLIGHT_FADE_END_TIME, 0.5, 0);
+    } else if (songTime >= HIGHLIGHT_FADE_END_TIME) {
+      highlightProbability = 0; // 174초 이후에는 확률을 0으로 고정합니다.
+    }
+
     this.video.loadPixels();
     if (this.video.pixels.length > 0) {
       for (let i = 0; i < this.gridData.length; i++) {
@@ -381,6 +451,16 @@ class Scene3 {
         const brightness = (r + g + b) / 3;
         const glyphIndex = floor((brightness / 255) * (this.asciiGlyphs.length - 1));
         this.gridData[i].targetChar = this.asciiGlyphs[glyphIndex];
+
+        // --- 하이라이트 로직: 문자가 변경되었는지 확인 ---
+        // 문자가 변경되었고, 50% 확률을 통과하면 하이라이트
+        if (this.gridData[i].targetChar !== this.gridData[i].previousChar && random() < highlightProbability) {
+          this.gridData[i].highlightStartTime = millis();
+          // 하이라이트 색상 설정: (random(200,255), 0, 0, 20)
+          this.gridData[i].highlightColor = color(random(130, 255), random(50, 200), random(200, 255),40);
+          // 이전 문자를 현재 문자로 업데이트
+          this.gridData[i].previousChar = this.gridData[i].targetChar;
+        }
         this.gridData[i].color = color(0); // 최종 색상은 검정
       }
     }
@@ -389,25 +469,41 @@ class Scene3 {
   updateAndDrawMorphing() {
     const elapsedTime = millis() - this.transitionStartTime;
     const progress = constrain(elapsedTime / this.morphDuration, 0, 1);
+    const now = millis();
 
     background(255);
     textAlign(CENTER, CENTER);
     textSize(this.glyphSize);
-    fill(0);
 
     const offsetX = (width - this.finalCols * this.cellSize) / 2;
     const offsetY = (height - this.finalRows * this.cellSize) / 2;
 
     for (let i = 0; i < this.gridData.length; i++) {
       const cell = this.gridData[i];
-      
-      // 아직 변환되지 않은 셀에 대해서만 확률적으로 변환을 시도합니다.
-      // 변환 빈도를 1/4로 줄입니다.
-      if (!cell.isMorphed && random() < progress * 0.25) {
-        cell.isMorphed = true;
-      }
       const x = offsetX + (i % this.finalCols) * this.cellSize + this.cellSize / 2;
       const y = offsetY + floor(i / this.finalCols) * this.cellSize + this.cellSize / 2;
+
+      // --- 하이라이트 그리기 ---
+      if (cell.highlightStartTime > 0 && now - cell.highlightStartTime < 100) {
+        push();
+        noStroke();
+        fill(cell.highlightColor);
+        rect(x - this.cellSize / 2, y - this.cellSize / 2, this.cellSize, this.cellSize);
+        pop();
+      } else {
+        cell.highlightStartTime = 0;
+      }
+
+      // 아직 변환되지 않은 셀에 대해서만 확률적으로 변환을 시도합니다.
+      if (!cell.isMorphed && random() < progress * 0.25) {
+        cell.isMorphed = true;
+        // 글자가 변하는 순간, 30% 확률로 하이라이트 효과를 트리거합니다.
+        if (random() < 0.3) {
+          cell.highlightStartTime = now;
+          cell.highlightColor = color(random(130, 255), random(50, 200), random(200, 255), 40);
+        }
+      }
+      fill(0); // 글자 색상은 검정
       // isMorphed 상태에 따라 그릴 문자를 결정합니다.
       text(cell.isMorphed ? cell.targetChar : cell.char, x, y);
     }
@@ -445,6 +541,37 @@ class Scene3 {
     const songTime = song.currentTime(); // 메인 스케치의 전역 song 변수 참조
 
     // --- 기존 문자 기반 아스키 아트 ---
+    // --- 점프 애니메이션 트리거 ---
+    if (now - this.lastJumpTime > this.jumpBeatDuration) {
+      this.lastJumpTime = now;
+
+      // 하이라이트 확률과 동일한 로직으로 점프 확률 계산
+      let jumpProbability = this.baseJumpProbability;
+      const FADE_START_TIME = 170; // 2분 50초
+      const FADE_DURATION = 4;     // 4초
+      const FADE_END_TIME = FADE_START_TIME + FADE_DURATION;
+
+      if (songTime >= FADE_START_TIME && songTime < FADE_END_TIME) {
+        jumpProbability = map(songTime, FADE_START_TIME, FADE_END_TIME, this.baseJumpProbability, 0);
+      } else if (songTime >= FADE_END_TIME) {
+        jumpProbability = 0;
+      }
+
+      if (jumpProbability > 0) {
+        const numToJump = floor(this.gridData.length * jumpProbability);
+        const shuffledIndices = shuffle(Array.from({ length: this.gridData.length }, (_, i) => i));
+
+        for (let i = 0; i < numToJump; i++) {
+          const cellIndex = shuffledIndices[i];
+          const cell = this.gridData[cellIndex];
+          if (!cell.isJumping) {
+            cell.isJumping = true;
+            cell.jumpStartTime = now;
+            cell.jumpDirection = (floor(cellIndex / this.finalCols) === 0) ? 1 : -1; // 최상단 행이면 아래로, 아니면 위로
+          }
+        }
+      }
+    }
     let bgColor = 255;
     const bgAnimElapsedTime = now - this.sweepStartTime;
     if (bgAnimElapsedTime >= 0) {
@@ -513,12 +640,65 @@ class Scene3 {
 
     for (let i = 0; i < this.gridData.length; i++) {
       const cell = this.gridData[i];
-      const x = offsetX + (i % this.finalCols) * this.cellSize + this.cellSize / 2;
-      const y = offsetY + floor(i / this.finalCols) * this.cellSize + this.cellSize / 2;
+      let x = offsetX + (i % this.finalCols) * this.cellSize + this.cellSize / 2;
+      let y = offsetY + floor(i / this.finalCols) * this.cellSize + this.cellSize / 2;
 
+      // --- 점프 애니메이션 y좌표 계산 ---
+      if (cell.isJumping) {
+        const jumpElapsed = now - cell.jumpStartTime;
+        if (jumpElapsed < this.jumpAnimationDuration) {
+          const jumpProgress = jumpElapsed / this.jumpAnimationDuration;
+          // sin 함수를 이용해 부드럽게 올라갔다 내려오는 움직임 구현 (0 -> 1 -> 0)
+          const jumpOffset = sin(jumpProgress * PI) * this.cellSize * cell.jumpDirection;
+          y -= jumpOffset;
+        } else {
+          cell.isJumping = false; // 애니메이션 종료
+        }
+      }
+
+
+      // --- 임팩트 효과 계산 ---
+      if (this.impactActive) {
+        const elapsed = millis() - this.impactStartTime;
+        const totalDuration = this.impactExpandDuration + this.impactContractDuration;
+
+        if (elapsed < totalDuration) {
+          const glyphPos = createVector(x, y);
+          const direction = p5.Vector.sub(glyphPos, this.impactCenter);
+          const distance = direction.mag();
+          direction.normalize();
+
+          // 거리에 반비례하는 이동량 (가까울수록 많이 움직임)
+          const baseDisplacement = map(distance, 0, width, this.impactMaxDisplacement, 10);
+          const displacement = baseDisplacement * cell.impactRandomFactor; // 각 글자의 고유 랜덤 계수 적용
+
+          const moveAmount = (elapsed < this.impactExpandDuration)
+            ? lerp(0, displacement, elapsed / this.impactExpandDuration) // 확장
+            : lerp(displacement, 0, (elapsed - this.impactExpandDuration) / this.impactContractDuration); // 수축
+
+          x += direction.x * moveAmount;
+          y += direction.y * moveAmount;
+        } else {
+          this.impactActive = false; // 애니메이션 종료
+        }
+      }
       const currentCol = i % this.finalCols;
       if (cell.targetColor && colsToColorSet.has(currentCol)) {
         cell.color = cell.targetColor;
+      }
+
+      // --- 하이라이트 그리기 ---
+      // 0.1초 동안 하이라이트 효과를 적용합니다.
+      if (cell.highlightStartTime > 0 && now - cell.highlightStartTime < 100) {
+        push();
+        noStroke();
+        fill(cell.highlightColor);
+        // 셀 배경에 사각형을 그려 하이라이트 효과를 줍니다.
+        rect(x - this.cellSize / 2, y - this.cellSize / 2, this.cellSize, this.cellSize);
+        pop();
+      } else {
+        // 하이라이트 시간이 지나면 초기화합니다.
+        cell.highlightStartTime = 0;
       }
 
       // 2분 42초(162초) 이후에는 원을 그립니다.
@@ -557,8 +737,18 @@ class Scene3 {
 
   // 메인 스케치의 keyPressed에서 호출됩니다.
   keyPressed() {
-    if (key === ' ') {
-      // 이 씬에서는 스페이스바 기능을 비활성화합니다.
+    if (key === '6') {
+      // 아스키 아트가 재생 중일 때만 효과 활성화
+      if (this.transitionState === 'playing' && !this.impactActive) {
+        this.impactActive = true;
+        this.impactStartTime = millis();
+        // 화면 내 랜덤한 좌표를 임팩트 중심으로 설정
+        this.impactCenter = createVector(random(width), random(height));
+        // 각 글자에 대해 랜덤 이동 계수를 미리 계산하여 저장
+        for (const cell of this.gridData) {
+          cell.impactRandomFactor = random(0.5, 1.5); // 50% ~ 150% 사이의 랜덤한 이동 비율
+        }
+      }
     }
   }
 }
