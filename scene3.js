@@ -5,7 +5,8 @@ class Scene3 {
     this.EMOJI_DURATION = 1.5;
     this.GATHER_START_TIME = 174; // 중앙으로 모이는 애니메이션 시작 시간
     this.GATHER_END_TIME = 180.6;   // 중앙으로 모이는 애니메이션 종료 시간
-    this.GATHER_RANDOM_DURATION = 5; // 출발 시간의 무작위 범위 (175~176초)
+    this.GATHER_START_RANDOM_DURATION = 5; // 출발 시간의 무작위 범위 (초)
+    this.GATHER_END_RANDOM_DURATION = 3;   // 도착 시간의 무작위 범위 (초)
 
     this.song = song;
     this.video = null; // 비디오 엘리먼트
@@ -49,6 +50,7 @@ class Scene3 {
     this.currentScale = 1; // 줌 효과는 사용하지 않으므로 1로 고정
     this.targetScale = 1;
     this.isReady = false; // 에셋 로딩 및 파싱 완료 여부
+    this.shakePixel = 0.5; // Scene4와 동일한 떨림 강도
 
     // --- 원 그리기 설정 ---
     this.circleColors = {};
@@ -130,6 +132,25 @@ class Scene3 {
     // 외부(다른 씬 또는 sketch.js)에 영향을 주지 않도록 격리합니다.
     push();
     background(255);
+    
+    const currentTime = this.song.isPlaying() ? this.song.currentTime() : 0;
+
+    // 스마일 이모지 시간대에는 다른 모든 애니메이션을 중지하고 이모지만 그립니다.
+    if (currentTime >= this.SMILE_EMOJI_START_TIME && currentTime <= this.SMILE_EMOJI_START_TIME + this.EMOJI_DURATION) {
+      push();
+      textAlign(CENTER, CENTER);
+      translate(random(-this.shakePixel, this.shakePixel), random(-this.shakePixel, this.shakePixel)); // 떨림 효과 적용
+      fill(random(245, 255), 20);
+      rectMode(CENTER);
+      rect(width / 2, height / 2, windowWidth, windowHeight);
+      const scene4GridSize = 39;
+      const emojiSize = min(width / scene4GridSize, height / scene4GridSize) * 0.8;
+      textSize(emojiSize);
+      text('😄', width / 2, height / 2);
+      pop();
+      pop(); // draw() 시작의 push()에 대한 pop
+      return; // 이모지를 그린 후, 나머지 draw 로직을 실행하지 않고 종료합니다.
+    }
 
     if (!this.isReady || this.video.width === 0) {
       textAlign(CENTER, CENTER);
@@ -152,22 +173,6 @@ class Scene3 {
       this.drawAsciiArt();
     }
 
-    if (this.song.isPlaying()){
-      let currentTime = this.song.currentTime();
-      if(currentTime <= this.SMILE_EMOJI_START_TIME + this.EMOJI_DURATION && currentTime >= this.SMILE_EMOJI_START_TIME){
-        push();
-        textAlign(CENTER, CENTER);
-        fill(random(245, 255));
-        rectMode(CENTER);
-        rect(width / 2, height / 2, windowWidth, windowHeight);
-        // Scene4의 초기 그리드 크기(39x39)와 동일한 기준으로 텍스트 크기를 계산합니다.
-        const scene4GridSize = 39;
-        const emojiSize = min(width / scene4GridSize, height / scene4GridSize) * 0.8;
-        textSize(emojiSize);
-        text('😄',width/2, height/2);
-        pop();
-      }
-    }  
     pop(); // push에 대한 pop
   }
 
@@ -196,6 +201,7 @@ class Scene3 {
         isMorphed: false, // morph 애니메이션에서 변환되었는지 여부
         // --- 중앙으로 모이는 애니메이션을 위한 속성 ---
         gatherStartTime: 0,
+        gatherEndTime: 0,
       });
     }
 
@@ -415,7 +421,14 @@ class Scene3 {
       this.transitionState = 'playing';
       // --- 중앙으로 모이는 애니메이션 준비 ---
       for (const cell of this.gridData) {
-        cell.gatherStartTime = this.GATHER_START_TIME + random(this.GATHER_RANDOM_DURATION);
+        const startTime = this.GATHER_START_TIME + random(this.GATHER_START_RANDOM_DURATION);
+        const endTime = this.GATHER_END_TIME - random(this.GATHER_END_RANDOM_DURATION);
+
+        // 시작 시간이 종료 시간보다 늦어지는 경우를 방지합니다.
+        // 만약 startTime이 endTime보다 크면, endTime을 startTime 바로 다음으로 설정하여
+        // 애니메이션이 즉시 끝나도록 보장합니다.
+        cell.gatherStartTime = startTime;
+        cell.gatherEndTime = max(startTime + 0.1, endTime); // 최소 0.1초의 애니메이션 시간 보장
       }
 
       this.video.play();
@@ -465,7 +478,9 @@ class Scene3 {
     const colsToColorSet = new Set(this.shuffledCols.slice(0, numColsToColor));
 
     // --- 175초부터 180초까지 중앙으로 모이는 애니메이션 ---
-    if (songTime >= this.GATHER_START_TIME && songTime < this.GATHER_END_TIME) {
+    // 모든 글자가 도착할 충분한 시간을 주기 위해, 애니메이션 종료 시간을 GATHER_END_TIME보다 넉넉하게 줍니다.
+    // (예: GATHER_END_TIME + 1초)
+    if (songTime >= this.GATHER_START_TIME && songTime < this.GATHER_END_TIME + 1) {
       const gatherProgress = map(songTime, this.GATHER_START_TIME, this.GATHER_END_TIME, 0, 1);
       const screenCenterX = width / 2;
       const screenCenterY = height / 2;
@@ -480,9 +495,13 @@ class Scene3 {
         let currentY = originalY;
 
         if (songTime >= cell.gatherStartTime) {
-          const cellProgress = map(songTime, cell.gatherStartTime, this.GATHER_END_TIME, 0, 1);
-          currentX = lerp(originalX, screenCenterX, cellProgress);
-          currentY = lerp(originalY, screenCenterY, cellProgress);
+          // 선형 진행률(0 to 1)을 계산합니다.
+          // constrain을 사용하여 진행률이 1을 초과하지 않도록 제한합니다.
+          const linearProgress = constrain(map(songTime, cell.gatherStartTime, cell.gatherEndTime, 0, 1), 0, 1);
+          // 진행률을 제곱하여 ease-in 효과를 적용합니다 (시작은 느리게, 끝은 빠르게).
+          const easedProgress = linearProgress * linearProgress;
+          currentX = lerp(originalX, screenCenterX, easedProgress);
+          currentY = lerp(originalY, screenCenterY, easedProgress);
           // 미세한 떨림 효과 추가
           currentX += random(-shakeAmount, shakeAmount);
           currentY += random(-shakeAmount, shakeAmount);
