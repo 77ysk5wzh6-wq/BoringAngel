@@ -46,7 +46,7 @@ class Scene3 {
     this.shuffledCols = []; // 색상 변경을 위해 무작위로 섞인 열 인덱스
 
     this.randomChars = ".`,-':;~i!lI?rvunogxcyz[]{}1()O0S9EZG%#MW&B@$";
-    
+
 
     this.currentScale = 1; // 줌 효과는 사용하지 않으므로 1로 고정
     this.targetScale = 1;
@@ -66,12 +66,21 @@ class Scene3 {
     this.lastJumpTime = 0;
     this.jumpAnimationDuration = 200; // 0.2초
     this.baseJumpProbability = 0.005; // 5%
+
+    // --- '7' 키 하이라이트 색상 순환 관련 변수 ---
+    this.highlightColorCycle = [
+      () => color(random(70, 200), random(70, 200), random(200, 255), 60), // Blue-ish
+      () => color(random(200, 255), random(70, 200), random(70, 200), 60), // Red-ish
+      () => color(random(70, 200), random(200, 255), random(70, 200), 60) // Green-ish
+    ];
+    this.highlightColorIndex = 0;
+
   }
-  
+
   // --- 하이라이트 및 점프 확률 계산을 위한 상수 ---
-  static get HIGHLIGHT_FADE_START_TIME() { return 170; } // 2분 50초
-  static get HIGHLIGHT_FADE_DURATION() { return 5; }     // 4초
-  static get HIGHLIGHT_BASE_PROBABILITY() { return 0.2; }
+  static get HIGHLIGHT_FADE_START_TIME() { return 166; } // 2분 50초
+  static get HIGHLIGHT_FADE_DURATION() { return 9; }     // 4초
+  static get HIGHLIGHT_BASE_PROBABILITY() { return 1; }
   static get JUMP_BASE_PROBABILITY() { return 0.005; }
 
   preload() {
@@ -80,7 +89,7 @@ class Scene3 {
     this.video = createVideo(['assets/footage2.mp4']);
   }
 
-  
+
   // 메인 스케치의 setup에서 호출됩니다.
   setup() {
     // --- 비디오 설정 ---
@@ -96,7 +105,7 @@ class Scene3 {
 
     // 제공된 문자열은 밀도가 낮은 순서(. -> @)로 정렬되어 있습니다.
     const densityString = ".`,-':;~i!lI?rvunogxcyz[]{}1()O0S9EZG%#MW&B@$";
-    
+
     // 밝기 매핑을 위해 배열을 뒤집어, 어두울수록 밀도 높은 문자가 선택되도록 합니다.
     this.asciiGlyphs = densityString.split('').reverse();
 
@@ -125,6 +134,9 @@ class Scene3 {
     // --- 점프 상태 리셋 ---
     this.lastJumpTime = 0;
 
+    // --- 하이라이트 색상 인덱스 리셋 ---
+    this.highlightColorIndex = 0;
+
     frameRate(30); // 비디오 프레임레이트와 유사하게 설정
   }
 
@@ -134,7 +146,7 @@ class Scene3 {
     // 외부(다른 씬 또는 sketch.js)에 영향을 주지 않도록 격리합니다.
     push();
     background(255);
-    
+
     const currentTime = this.song.isPlaying() ? this.song.currentTime() : 0;
 
     // 스마일 이모지 시간대에는 다른 모든 애니메이션을 중지하고 이모지만 그립니다.
@@ -192,7 +204,7 @@ class Scene3 {
     inventor and explorer, every teacher of morals, every corrupt politician,
     every "superstar," every "supreme leader," every saint and sinner in the
     history of our species lived there--on a mote of dust suspended in a sunbeam.`;
-    
+
     const poemChars = poem.replace(/\n/g, ' ').replace(/\s+/g, ' ');
 
     for (let i = 0; i < this.finalCols * this.finalRows; i++) {
@@ -206,6 +218,7 @@ class Scene3 {
         gatherEndTime: 0,
         previousChar: ' ', // 이전 프레임의 문자를 저장
         highlightStartTime: 0, // 하이라이트 시작 시간
+        lastCharChangeTime: 0, // 문자가 마지막으로 변경된 시간
         highlightColor: null, // 하이라이트 색상
         impactRandomFactor: 1.0, // '6'키 임팩트 효과의 랜덤 계수
         // --- 점프 애니메이션 속성 ---
@@ -290,6 +303,7 @@ class Scene3 {
     const elapsedTime = millis() - this.transitionStartTime;
     const progress = constrain(elapsedTime / this.expansionDuration, 0, 1);
     const now = millis();
+    const highlightProbability = this.getDynamicProbability(Scene3.HIGHLIGHT_BASE_PROBABILITY);
 
     // 현재 진행률에 따라 보여줄 그리드 크기 계산
     const currentCols = floor(lerp(this.initialCols, this.finalCols, progress));
@@ -308,9 +322,9 @@ class Scene3 {
         const cell = this.gridData[gridIdx];
         cell.color = color(0); // 검은색으로 변경
         // 색상이 변경되는 순간 하이라이트 트리거
-        if (random() < 0.2) { // 30% 확률
+        if (random() < highlightProbability) { // 동적 확률 적용
           cell.highlightStartTime = now;
-          cell.highlightColor = color(random(130, 255), random(50, 200), random(200, 255), 40);
+          cell.highlightColor = this.highlightColorCycle[this.highlightColorIndex]();
         }
       }
     }
@@ -344,6 +358,7 @@ class Scene3 {
         if (cell.highlightStartTime > 0 && now - cell.highlightStartTime < 100) {
           push();
           noStroke();
+          rectMode(CENTER);
           fill(cell.highlightColor);
           rect(x - this.cellSize / 2, y - this.cellSize / 2, this.cellSize, this.cellSize);
           pop();
@@ -355,7 +370,7 @@ class Scene3 {
           // 초기 30x18 영역 밖의 셀에만 무작위 문자를 채웁니다.
           cell.char = random(this.randomChars.split(''));
           // 문자가 변경되는 순간 하이라이트 트리거
-          if (random() < 0.2) { // 30% 확률
+          if (random() < highlightProbability) {
             cell.highlightStartTime = now;
             cell.highlightColor = color(random(130, 255), random(50, 200), random(200, 255), 40);
           }
@@ -416,17 +431,22 @@ class Scene3 {
         const glyphIndex = floor((brightness / 255) * (this.asciiGlyphs.length - 1));
         this.gridData[i].targetChar = this.asciiGlyphs[glyphIndex];
 
-        const highlightProbability = this.getDynamicProbability(Scene3.HIGHLIGHT_BASE_PROBABILITY);
+        const cell = this.gridData[i];
+        const now = millis();
 
         // --- 하이라이트 로직: 문자가 변경되었는지 확인 ---
-        // 문자가 변경되었고, 50% 확률을 통과하면 하이라이트
-        if (this.gridData[i].targetChar !== this.gridData[i].previousChar && random() < highlightProbability) {
-          this.gridData[i].highlightStartTime = millis();
-          // 하이라이트 색상 설정: (random(200,255), 0, 0, 20)
-          this.gridData[i].highlightColor = color(random(130, 255), random(50, 200), random(200, 255),40);
-          // 이전 문자를 현재 문자로 업데이트
+        if (cell.targetChar !== cell.previousChar) {
+          // 문자가 변경되면, 마지막 변경 시간을 기록하고 하이라이트를 제거합니다.
+          cell.lastCharChangeTime = now;
+          cell.highlightStartTime = 0;
           this.gridData[i].previousChar = this.gridData[i].targetChar;
+        } 
+        // 문자가 100ms 이상 변경되지 않았고, 아직 하이라이트가 시작되지 않았다면 하이라이트를 시작합니다.
+        else if (now - cell.lastCharChangeTime > 100 && cell.highlightStartTime === 0) {
+          cell.highlightStartTime = now;
+          cell.highlightColor = this.highlightColorCycle[this.highlightColorIndex]();
         }
+
         this.gridData[i].color = color(0); // 최종 색상은 검정
       }
     }
@@ -436,6 +456,7 @@ class Scene3 {
     const elapsedTime = millis() - this.transitionStartTime;
     const progress = constrain(elapsedTime / this.morphDuration, 0, 1);
     const now = millis();
+    const highlightProbability = this.getDynamicProbability(Scene3.HIGHLIGHT_BASE_PROBABILITY);
 
     background(255);
     textAlign(CENTER, CENTER);
@@ -463,10 +484,10 @@ class Scene3 {
       // 아직 변환되지 않은 셀에 대해서만 확률적으로 변환을 시도합니다.
       if (!cell.isMorphed && random() < progress * 0.25) {
         cell.isMorphed = true;
-        // 글자가 변하는 순간, 30% 확률로 하이라이트 효과를 트리거합니다.
-        if (random() < 0.2) {
+        // 글자가 변하는 순간, 하이라이트 효과를 트리거합니다.
+        if (random() < highlightProbability) {
           cell.highlightStartTime = now;
-          cell.highlightColor = color(random(130, 255), random(50, 200), random(200, 255), 40);
+          cell.highlightColor = this.highlightColorCycle[this.highlightColorIndex]();
         }
       }
       fill(0); // 글자 색상은 검정
@@ -496,7 +517,7 @@ class Scene3 {
       this.video.play();
     }
   }
-  
+
   drawAsciiArt() {
     // 먼저 비디오의 현재 프레임을 기반으로 목표 문자를 업데이트합니다.
     this.prepareMorphTarget();
@@ -588,6 +609,18 @@ class Scene3 {
           currentX += random(-shakeAmount, shakeAmount);
           currentY += random(-shakeAmount, shakeAmount);
         }
+
+        // --- 하이라이트 그리기 (gather 애니메이션 중에도 유지) ---
+        if (cell.highlightStartTime > 0 && now - cell.highlightStartTime < 100) {
+          push();
+          noStroke();
+          fill(cell.highlightColor);
+          rect(currentX - this.cellSize / 2, currentY - this.cellSize / 2, this.cellSize, this.cellSize);
+          pop();
+        } else {
+          cell.highlightStartTime = 0;
+        }
+
         text(cell.targetChar, currentX, currentY);
       }
       return; // 아래의 일반 그리기 로직을 건너뜁니다.
@@ -675,6 +708,9 @@ class Scene3 {
           cell.impactRandomFactor = random(0.5, 1.5); // 50% ~ 150% 사이의 랜덤한 이동 비율
         }
       }
+    } else if (key === '7') {
+      // 하이라이트 색상 순환
+      this.highlightColorIndex = (this.highlightColorIndex + 1) % this.highlightColorCycle.length;
     }
   }
 
@@ -692,7 +728,3 @@ class Scene3 {
     return baseProbability;
   }
 }
-
-color(random(70, 200), random(70, 200), random(200, 255), 40)
-color(random(200, 255), random(70, 200), random(70, 200), 40)
-color(random(70, 200), random(200, 255), random(70, 200), 40)
