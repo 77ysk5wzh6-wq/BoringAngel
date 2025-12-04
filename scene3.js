@@ -80,7 +80,7 @@ class Scene3 {
   // --- 하이라이트 및 점프 확률 계산을 위한 상수 ---
   static get HIGHLIGHT_FADE_START_TIME() { return 166; } // 2분 50초
   static get HIGHLIGHT_FADE_DURATION() { return 9; }     // 4초
-  static get HIGHLIGHT_BASE_PROBABILITY() { return 1; }
+  static get HIGHLIGHT_BASE_PROBABILITY() { return 0.5; }
   static get JUMP_BASE_PROBABILITY() { return 0.005; }
 
   preload() {

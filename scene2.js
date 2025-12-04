@@ -111,6 +111,14 @@ class Scene2 {
     this.boldWordIndices = []; // 볼드 처리할 단어의 인덱스 목록
     this.lastBoldSelectionTime = 0;
 
+    // --- 배경 그리드 글자 이동 애니메이션 변수 ---
+    this.shiftBpm = 225;
+    this.shiftBeatDuration = 60000 / this.shiftBpm;
+    this.lastShiftTime = 0;
+    this.shiftOutDuration = 10; // 0.1초 동안 이동
+    this.shiftInDuration = 100;  // 0.3초 동안 복귀
+    this.shiftAnimationDuration = this.shiftOutDuration + this.shiftInDuration; // 총 애니메이션 시간
+
     this.isSetupComplete = false; // setup 함수가 완료되었는지 확인
 
     // --- 줌 아웃 애니메이션 변수 ---
@@ -196,7 +204,12 @@ class Scene2 {
       const wordWithSpace = word + ' ';
       const startIndex = charIndex;
       for (const char of wordWithSpace) {
-        this.finalGridState.push({ char: char, revealed: false });
+        this.finalGridState.push({
+          char: char,
+          revealed: false,
+          isShifting: false, // 글자 이동 애니메이션 상태
+          shiftStartTime: 0, // 글자 이동 애니메이션 시작 시간
+        });
         charIndex++;
       }
       this.gridWordBoundaries.push({ start: startIndex, end: charIndex });
@@ -318,6 +331,9 @@ class Scene2 {
         // 요가 이모지가 나오기 전까지만 하이라이트 애니메이션을 실행합니다.
         if (currentTime > this.HIGHLIGHT_START_TIME && currentTime < this.YOGA_EMOJI_START_TIME) {
           this.updateAndDrawHighlight(currentTime);
+          if (currentTime < 131) { // 131초까지만 글자 이동 애니메이션 실행
+            this.triggerGridShiftAnimation();
+          }
           // 볼드 효과도 하이라이트와 동일한 조건에서 실행합니다.
           this.updateBoldWords(currentTime);
           // 배경 그리드를 그릴 때 볼드 처리할 단어 정보를 전달합니다.
@@ -494,6 +510,7 @@ class Scene2 {
   }
 
   drawBackgroundGrid(isBoldEffectActive) {
+    const now = millis();
     const cellWidth = width / this.gridCols;
     const cellHeight = height / this.gridRows;
     const textSizeValue = cellHeight;
@@ -518,8 +535,30 @@ class Scene2 {
 
         if (cell && cell.revealed) {
           const char = cell.char;
-          const x = i * cellWidth + cellWidth / 2;
+          let x = i * cellWidth + cellWidth / 2;
           const y = j * cellHeight + cellHeight / 2;
+
+          // --- 글자 이동 애니메이션 계산 ---
+          if (cell.isShifting) {
+            const elapsed = now - cell.shiftStartTime;
+            if (elapsed < this.shiftAnimationDuration) {
+              let shiftOffset;
+              if (elapsed < this.shiftOutDuration) {
+                // 0.1초 동안 오른쪽으로 이동 (Ease-Out)
+                let t = elapsed / this.shiftOutDuration;
+                let progress = t * (2 - t); // Ease-Out Quad
+                shiftOffset = progress * cellWidth;
+              } else {
+                // 0.3초 동안 원래 위치로 복귀 (Ease-In)
+                let t = (elapsed - this.shiftOutDuration) / this.shiftInDuration;
+                let progress = t * t; // Ease-In Quad
+                shiftOffset = (1 - progress) * cellWidth;
+              }
+              x += shiftOffset;
+            } else {
+              cell.isShifting = false; // 애니메이션 종료
+            }
+          }
 
           // 볼드 스타일 설정
           textStyle(NORMAL);
@@ -548,6 +587,31 @@ class Scene2 {
       }
     }
     pop();
+  }
+
+  triggerGridShiftAnimation() {
+    const now = millis();
+    if (now - this.lastShiftTime > this.shiftBeatDuration) {
+      this.lastShiftTime = now;
+
+      // 1. 공개된 모든 글자의 인덱스를 수집합니다.
+      const revealedCharIndices = [];
+      this.finalGridState.forEach((cell, index) => {
+        if (cell.revealed && cell.char !== ' ' && !cell.isShifting) {
+          revealedCharIndices.push(index);
+        }
+      });
+
+      // 2. 그 중 10%를 무작위로 선택합니다.
+      const numToShift = floor(revealedCharIndices.length * 0.3);
+      const shuffledIndices = shuffle(revealedCharIndices);
+
+      for (let i = 0; i < numToShift; i++) {
+        const charIndex = shuffledIndices[i];
+        this.finalGridState[charIndex].isShifting = true;
+        this.finalGridState[charIndex].shiftStartTime = now;
+      }
+    }
   }
 
   updateBoldWords(currentTime) {
