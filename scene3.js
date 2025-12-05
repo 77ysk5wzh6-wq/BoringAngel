@@ -3,7 +3,7 @@ class Scene3 {
 
     this.SMILE_EMOJI_START_TIME = 180.6;
     this.EMOJI_DURATION = 1.5;
-    this.GATHER_START_TIME = 174; // 중앙으로 모이는 애니메이션 시작 시간
+    this.GATHER_START_TIME = 174.3; // 중앙으로 모이는 애니메이션 시작 시간
     this.GATHER_END_TIME = 180.6;   // 중앙으로 모이는 애니메이션 종료 시간
     this.GATHER_START_RANDOM_DURATION = 5; // 출발 시간의 무작위 범위 (초)
     this.GATHER_END_RANDOM_DURATION = 3;   // 도착 시간의 무작위 범위 (초)
@@ -18,8 +18,8 @@ class Scene3 {
     // this.finalCols = 56;
     // this.finalRows = 32;
 
-    this.finalCols = 112;
-    this.finalRows = 64;
+    this.finalCols = 115;
+    this.finalRows = 74;
 
     this.cols = 0;
     this.rows = 0;
@@ -31,7 +31,6 @@ class Scene3 {
     this.transitionStartTime = 0;
     this.shrinkDuration = 3000; // 3초
     this.expansionDuration = 6000; // 6초
-    this.morphDelay = 100; // 0.1초
     this.morphDuration = 3200; // 3.2초
 
     this.gridData = []; // 그리드 셀의 정보를 담는 배열
@@ -67,20 +66,33 @@ class Scene3 {
     this.jumpAnimationDuration = 200; // 0.2초
     this.baseJumpProbability = 0.005; // 5%
 
-    // --- '7' 키 하이라이트 색상 순환 관련 변수 ---
-    this.highlightColorCycle = [
-      () => color(random(70, 200), random(70, 200), random(200, 255), 60), // Blue-ish
-      () => color(random(200, 255), random(70, 200), random(70, 200), 60), // Red-ish
-      () => color(random(70, 200), random(200, 255), random(70, 200), 60) // Green-ish
+    // --- 하이라이트 색상 목록 ---
+    this.highlightColors = [
+      color(208, 189, 255),
+      color(96, 163, 94),
+      color(134, 131, 252),
+      color(177, 243, 240),
+      color(172, 55, 2),
+      color(246, 228, 179),
+      color(232, 156, 156),
+      color(74, 171, 230),
+      color(197, 217, 181),
+      color(144, 6, 41),
+      color(10, 40, 224),
+      color(190, 112, 89),
+      color(143, 180, 139),
+      color(99, 5, 213),
+      color(139, 236, 230),
+      color(240, 190, 90)
     ];
-    this.highlightColorIndex = 0;
+    this.charToColorMap = new Map(); // 문자를 색상에 매핑 (명도 기준)
 
   }
 
   // --- 하이라이트 및 점프 확률 계산을 위한 상수 ---
-  static get HIGHLIGHT_FADE_START_TIME() { return 166; } // 2분 50초
-  static get HIGHLIGHT_FADE_DURATION() { return 9; }     // 4초
-  static get HIGHLIGHT_BASE_PROBABILITY() { return 0.5; }
+  static get HIGHLIGHT_FADE_START_TIME() { return 173; } // 2분 50초
+  static get HIGHLIGHT_FADE_DURATION() { return 4; }     // 4초
+  static get HIGHLIGHT_BASE_PROBABILITY() { return 0.3; }
   static get JUMP_BASE_PROBABILITY() { return 0.005; }
 
   preload() {
@@ -106,11 +118,41 @@ class Scene3 {
     // 제공된 문자열은 밀도가 낮은 순서(. -> @)로 정렬되어 있습니다.
     const densityString = ".`,-':;~i!lI?rvunogxcyz[]{}1()O0S9EZG%#MW&B@$";
 
-    // 밝기 매핑을 위해 배열을 뒤집어, 어두울수록 밀도 높은 문자가 선택되도록 합니다.
-    this.asciiGlyphs = densityString.split('').reverse();
+    // 1. 문자를 실제 시각적 너비(밝기)에 따라 정렬합니다.
+    // textWidth를 사용하기 위해 폰트와 크기를 임시로 설정합니다.
+    push();
+    textFont('monospace'); // 너비 측정을 위해 고정폭 폰트 사용
+    textSize(this.glyphSize);
+    this.asciiGlyphs = densityString.split('').sort((a, b) => {
+      return textWidth(a) - textWidth(b);
+    });
+    pop();
+
+    // 2. 하이라이트 색상을 명도순으로 정렬합니다.
+    this.highlightColors.sort((a, b) => brightness(a) - brightness(b));
+
+    // 3. 정렬된 문자와 색상을 매핑합니다.
+    this.charToColorMap.clear();
+    const numChars = this.asciiGlyphs.length;
+    const numColors = this.highlightColors.length;
+    for (let i = 0; i < numChars; i++) {
+      const char = this.asciiGlyphs[i];
+      // 문자의 명도 순서(인덱스)를 색상의 명도 순서(인덱스)에 매핑합니다.
+      const colorIndex = floor(map(i, 0, numChars - 1, 0, numColors - 1));
+      let mappedColor = this.highlightColors[colorIndex];
+
+      // 정렬이 끝난 후, 특정 색상(144, 6, 41)을 빨간색(255, 0, 0)으로 교체합니다.
+      // 이렇게 하면 정렬 순서에 영향을 주지 않고, 칠할 때만 색상이 변경됩니다.
+      if (red(mappedColor) === 144 && green(mappedColor) === 6 && blue(mappedColor) === 41) {
+        mappedColor = color(255, 0, 0);
+      }
+
+      // 투명도(150)를 적용하여 새로운 색상 객체를 생성하고 맵에 저장합니다.
+      const finalColor = color(red(mappedColor), green(mappedColor), blue(mappedColor), 150);
+      this.charToColorMap.set(char, finalColor);
+    }
 
     this.isReady = true;
-
     console.log("Scene 3 is set up and ready.");
     console.log(`Grid: ${this.cols}x${this.rows}`);
     console.log(`Using ${this.asciiGlyphs.length} glyphs: ${this.asciiGlyphs.join('')}`);
@@ -133,9 +175,6 @@ class Scene3 {
 
     // --- 점프 상태 리셋 ---
     this.lastJumpTime = 0;
-
-    // --- 하이라이트 색상 인덱스 리셋 ---
-    this.highlightColorIndex = 0;
 
     frameRate(60); // 비디오 프레임레이트와 유사하게 설정
   }
@@ -324,7 +363,7 @@ class Scene3 {
         // 색상이 변경되는 순간 하이라이트 트리거
         if (random() < highlightProbability) { // 동적 확률 적용
           cell.highlightStartTime = now;
-          cell.highlightColor = this.highlightColorCycle[this.highlightColorIndex]();
+          cell.highlightColor = this.charToColorMap.get(cell.char) || color(255, 0, 0, 150); // 문자에 매핑된 색상 사용
         }
       }
     }
@@ -354,13 +393,13 @@ class Scene3 {
         const x = offsetX + i * this.cellSize + this.cellSize / 2;
         const y = offsetY + j * this.cellSize + this.cellSize / 2;
 
-        // --- 하이라이트 그리기 ---
+        // --- 하이라이트 그리기 --- expansion
         if (cell.highlightStartTime > 0 && now - cell.highlightStartTime < 100) {
           push();
           noStroke();
           rectMode(CENTER);
           fill(cell.highlightColor);
-          rect(x - this.cellSize / 2, y - this.cellSize / 2, this.cellSize, this.cellSize);
+          rect(x, y, this.cellSize, this.cellSize);
           pop();
         } else {
           cell.highlightStartTime = 0;
@@ -372,7 +411,7 @@ class Scene3 {
           // 문자가 변경되는 순간 하이라이트 트리거
           if (random() < highlightProbability) {
             cell.highlightStartTime = now;
-            cell.highlightColor = color(random(130, 255), random(50, 200), random(200, 255), 40);
+            cell.highlightColor = this.charToColorMap.get(cell.char) || color(255, 0, 0, 150); // 문자에 매핑된 색상 사용
           }
         }
         fill(cell.color);
@@ -381,36 +420,9 @@ class Scene3 {
     }
 
     if (progress >= 1) {
-      // expansion이 끝나면 'expansion_done' 상태로 전환하고, 현재 시간을 기록합니다.
-      this.transitionState = 'expansion_done';
-      this.transitionStartTime = millis();
-    }
-  }
-
-  handleExpansionDone() {
-    // expansion의 마지막 프레임을 계속 그립니다.
-    background(255);
-    textAlign(CENTER, CENTER);
-    textSize(this.glyphSize);
-
-    const offsetX = (width - this.finalCols * this.cellSize) / 2;
-    const offsetY = (height - this.finalRows * this.cellSize) / 2;
-
-    for (let i = 0; i < this.gridData.length; i++) {
-      const cell = this.gridData[i];
-      const x = offsetX + (i % this.finalCols) * this.cellSize + this.cellSize / 2;
-      const y = offsetY + floor(i / this.finalCols) * this.cellSize + this.cellSize / 2;
-      fill(cell.color);
-      text(cell.char, x, y);
-    }
-
-    // 0.5초(500ms)가 지났는지 확인합니다.
-    const elapsedTime = millis() - this.transitionStartTime;
-    if (elapsedTime >= this.morphDelay) {
-      // 0.5초가 지나면 morphing 상태로 전환하고, 애니메이션을 준비합니다.
-      console.log("Starting morphing after 0.5s delay.");
+      // expansion이 끝나면 바로 morphing 상태로 전환합니다.
       this.transitionState = 'morphing';
-      this.transitionStartTime = millis(); // morphing 애니메이션 시작 시간 재설정
+      this.transitionStartTime = millis();
       this.prepareMorphTarget(); // morphing 목표 프레임 준비
     }
   }
@@ -444,7 +456,7 @@ class Scene3 {
         // 문자가 100ms 이상 변경되지 않았고, 아직 하이라이트가 시작되지 않았다면 하이라이트를 시작합니다.
         else if (now - cell.lastCharChangeTime > 100 && cell.highlightStartTime === 0) {
           cell.highlightStartTime = now;
-          cell.highlightColor = this.highlightColorCycle[this.highlightColorIndex]();
+          cell.highlightColor = this.charToColorMap.get(cell.targetChar) || color(255, 0, 0, 150);
         }
 
         this.gridData[i].color = color(0); // 최종 색상은 검정
@@ -470,12 +482,12 @@ class Scene3 {
       const x = offsetX + (i % this.finalCols) * this.cellSize + this.cellSize / 2;
       const y = offsetY + floor(i / this.finalCols) * this.cellSize + this.cellSize / 2;
 
-      // --- 하이라이트 그리기 ---
+      // --- 하이라이트 그리기 --- morphing
       if (cell.highlightStartTime > 0 && now - cell.highlightStartTime < 100) {
         push();
         noStroke();
         fill(cell.highlightColor);
-        rect(x - this.cellSize / 2, y - this.cellSize / 2, this.cellSize, this.cellSize);
+        rect(x, y, this.cellSize, this.cellSize);
         pop();
       } else {
         cell.highlightStartTime = 0;
@@ -487,7 +499,7 @@ class Scene3 {
         // 글자가 변하는 순간, 하이라이트 효과를 트리거합니다.
         if (random() < highlightProbability) {
           cell.highlightStartTime = now;
-          cell.highlightColor = this.highlightColorCycle[this.highlightColorIndex]();
+          cell.highlightColor = this.charToColorMap.get(cell.targetChar) || color(255, 0, 0, 150); // 문자에 매핑된 색상 사용
         }
       }
       fill(0); // 글자 색상은 검정
@@ -611,11 +623,11 @@ class Scene3 {
         }
 
         // --- 하이라이트 그리기 (gather 애니메이션 중에도 유지) ---
-        if (cell.highlightStartTime > 0 && now - cell.highlightStartTime < 100) {
+        if (cell.highlightStartTime > 0 && now - cell.highlightStartTime < 1) {
           push();
           noStroke();
           fill(cell.highlightColor);
-          rect(currentX - this.cellSize / 2, currentY - this.cellSize / 2, this.cellSize, this.cellSize);
+          rect(currentX, currentY, this.cellSize, this.cellSize);
           pop();
         } else {
           cell.highlightStartTime = 0;
@@ -675,14 +687,17 @@ class Scene3 {
         cell.color = cell.targetColor;
       }
 
-      // --- 하이라이트 그리기 ---
-      // 0.1초 동안 하이라이트 효과를 적용합니다.
-      if (cell.highlightStartTime > 0 && now - cell.highlightStartTime < 100) {
+      // --- 하이라이트 그리기 --- main
+      // 2분 50초(170초)부터 하이라이트 지속 시간을 100ms에서 10ms로 변경합니다.
+      const highlightDuration = (songTime >= 171.7) ? 4 : 100;
+
+      // 하이라이트 효과를 적용합니다.
+      if (cell.highlightStartTime > 0 && now - cell.highlightStartTime < highlightDuration) {
         push();
         noStroke();
         fill(cell.highlightColor);
         // 셀 배경에 사각형을 그려 하이라이트 효과를 줍니다.
-        rect(x - this.cellSize / 2, y - this.cellSize / 2, this.cellSize, this.cellSize);
+        rect(x, y, this.cellSize, this.cellSize);
         pop();
       } else {
         // 하이라이트 시간이 지나면 초기화합니다.
@@ -708,9 +723,6 @@ class Scene3 {
           cell.impactRandomFactor = random(0.5, 1.5); // 50% ~ 150% 사이의 랜덤한 이동 비율
         }
       }
-    } else if (key === '7') {
-      // 하이라이트 색상 순환
-      this.highlightColorIndex = (this.highlightColorIndex + 1) % this.highlightColorCycle.length;
     }
   }
 
@@ -719,12 +731,17 @@ class Scene3 {
     const fadeStartTime = Scene3.HIGHLIGHT_FADE_START_TIME;
     const fadeEndTime = fadeStartTime + Scene3.HIGHLIGHT_FADE_DURATION;
 
+    // 173초부터 177초 사이
     if (songTime >= fadeStartTime && songTime < fadeEndTime) {
-      return map(songTime, fadeStartTime, fadeEndTime, baseProbability, 0);
+      // 선형 진행률(0 to 1)을 계산합니다.
+      const linearProgress = map(songTime, fadeStartTime, fadeEndTime, 0, 1);
+      // Ease-In 효과를 위해 진행률을 제곱합니다 (느리게 시작해서 빠르게 변화).
+      const easedProgress = linearProgress * linearProgress;
+      // 보간된 확률을 반환합니다.
+      return lerp(baseProbability, 0, easedProgress);
     } else if (songTime >= fadeEndTime) {
       return 0;
     }
-    // 170초 이전에는 기본 확률을 반환합니다.
     return baseProbability;
   }
 }
