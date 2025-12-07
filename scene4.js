@@ -496,8 +496,9 @@ class Scene4 {
       if (cell.highlightStartTime > 0 && now - cell.highlightStartTime < 100) {
         push();
         noStroke();
+        rectMode(CENTER);
         fill(cell.highlightColor);
-        rect(x - this.cellSize / 2, y - this.cellSize / 2, this.cellSize, this.cellSize);
+        rect(x, y, this.cellSize, this.cellSize);
         pop();
       } else {
         cell.highlightStartTime = 0;
