@@ -159,10 +159,15 @@ class Scene4 {
     const now = millis();
 
     // 자동 하이라이트 색상 변경
-    // gather 애니메이션이 시작되기 전까지만 0.1초마다 색상을 변경합니다.
-    if (currentTime < this.GATHER_START_TIME && now - this.lastHighlightColorChangeTime > this.highlightColorChangeInterval) {
-      this.highlightColorIndex = (this.highlightColorIndex + 1) % this.highlightColorCycle.length;
-      this.lastHighlightColorChangeTime = now;
+    if (currentTime < this.GATHER_START_TIME) {
+      // gather 애니메이션이 시작되기 전까지만 0.1초마다 색상을 변경합니다.
+      if (now - this.lastHighlightColorChangeTime > this.highlightColorChangeInterval) {
+        this.highlightColorIndex = (this.highlightColorIndex + 1) % this.highlightColorCycle.length;
+        this.lastHighlightColorChangeTime = now;
+      }
+    } else {
+      // gather 애니메이션이 시작되면 하이라이트 색상을 파란색 계열(인덱스 0)로 고정합니다.
+      this.highlightColorIndex = 0;
     }
 
     // 스마일 이모지 시간대에는 다른 모든 애니메이션을 중지하고 이모지만 그립니다.
