@@ -67,7 +67,7 @@ class Scene2 {
     // --- 배경 악보 생성 변수 ---
     this.backgroundElements = [];
     this.initialBackgroundDensity = 30;
-    this.targetBackgroundDensity = 300;
+    this.targetBackgroundDensity = 200;
     this.initialStaffDensity = 1;
     this.targetStaffDensity = 25;
 
@@ -88,7 +88,7 @@ class Scene2 {
     this.flashStartTime = 0;
     this.isFlashing = false;
     this.flashDuration = 200;
-    this.flashTriggerTime = 80.12; // 수정: 60.12 -> 80.12
+    this.flashTriggerTime = 60.12; // 수정: 60.12 -> 80.12
     this.flashRectangles = [];
 
     // --- 배경 플래시 효과 변수 ---
@@ -183,7 +183,7 @@ class Scene2 {
       if (currentTime < FADE_START_TIME) {
         const now = millis();
         if (this.backgroundFlashTime > 0 && now - this.backgroundFlashTime < 100) {
-          background(245);
+          background(240);
         } else {
           this.backgroundFlashTime = 0;
           background(255);
@@ -524,8 +524,18 @@ class Scene2 {
     const now = millis();
 
     this.backgroundElements.forEach(el => {
-      let x = el.x;
-      let y = el.y;
+      let originalX = el.x;
+      let originalY = el.y;
+      let x = originalX;
+      let y = originalY;
+
+      // --- 줌 아웃 효과 적용 ---
+      // 줌 배율에 따라 화면 중앙을 기준으로 좌표를 보정합니다.
+      if (zoomFactor !== 1.0) {
+        x = lerp(width / 2, originalX, zoomFactor);
+        y = lerp(height / 2, originalY, zoomFactor);
+      }
+
       if (isShaking) {
         el.currentShakeOffsetX = lerp(el.currentShakeOffsetX, el.targetShakeOffsetX, 0.1);
         el.currentShakeOffsetY = lerp(el.currentShakeOffsetY, el.targetShakeOffsetY, 0.1);
@@ -694,16 +704,16 @@ class Scene2 {
         }
         this.song.play();
       }
-    } else if (key === '5') {
+    } else if (key === '6') {
       const currentTime = this.song.currentTime();
       if (currentTime >= this.flashTriggerTime && !this.isFlashing) {
         this.isFlashing = true;
         this.flashStartTime = millis();
 
         this.flashRectangles = [];
-        const numRects = random(200, 290);
+        const numRects = random(2, 190);
         for (let i = 0; i < numRects; i++) {
-          const initialWidth = random(0.1, 3);
+          const initialWidth = random(0.01, 1);
           const x = random(width);
 
           this.flashRectangles.push({
@@ -713,7 +723,7 @@ class Scene2 {
           });
         }
       }
-    } else if (key === '6') {
+    } else if (key === '7') {
       this.isInverting = true;
       this.inversionStartTime = millis();
     }

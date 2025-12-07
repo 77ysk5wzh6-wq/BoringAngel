@@ -683,8 +683,8 @@ class Scene1 {
       textAlign(CENTER, CENTER);
       fill(random(245, 255));
       rect(width/2, height/2, windowWidth, windowHeight);
-      textSize(60);
-      text('🌎',width/2, height/2);
+      textSize(63);
+      text('😃',width/2, height/2);
       pop();
     }
     if(currentTime < 60.167 && currentTime > 59.167){
