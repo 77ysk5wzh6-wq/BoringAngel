@@ -683,7 +683,7 @@ class Scene1 {
       textAlign(CENTER, CENTER);
       fill(random(245, 255));
       rect(width/2, height/2, windowWidth, windowHeight);
-      textSize(50);
+      textSize(60);
       text('🌎',width/2, height/2);
       pop();
     }
@@ -698,17 +698,34 @@ class Scene1 {
       pop();
     }
 
-    // --- "터치하여 시작" 안내 문구 ---
+    // --- "Sublime Text" 제목 및 "터치하여 시작" 안내 문구 ---
     // 노래가 재생 중이 아니고, 첫 번째 씬일 때만 표시
     if (!this.song.isPlaying() && sceneManager.sceneIndex === 0) {
       push();
       textAlign(CENTER, CENTER);
       textSize(20);
-      fill(255); // 흰색
-      // 깜빡이는 효과를 위해 1초마다 보였다 안보였다 함
-      if (floor(millis() / 1000) % 2 === 0) {
-        text("Touch to Start", width / 2, height / 2 + 50);
+      fill(0,0,255); // 흰색
+
+      // --- "Sublime Text" 제목 ---
+      // 0.5초 간격으로 깜빡이는 효과
+      if (floor(millis() / 500) % 2 === 0) {
+        let title1 = "Boring";
+        let title2 = "Angel";
+        let padding = 10;
+        let initialSize = 400; // 시작 텍스트 크기
+        textSize(initialSize);
+        let textW = textWidth(title1); // "Sublime"을 기준으로 너비 계산
+        // 화면 너비에 맞게 텍스트 크기 동적 조절
+        let finalSize = initialSize;
+        if (textW > width - padding) {
+          finalSize = initialSize * ((width - padding) / textW);
+        }
+        textSize(finalSize);
+        // "Sublime"과 "Text"를 두 줄에 걸쳐 그립니다.
+        text(title1, width / 2, height / 2 - finalSize / 2);
+        text(title2, width / 2, height / 2 + finalSize / 2);
       }
+
       pop();
     }
   }

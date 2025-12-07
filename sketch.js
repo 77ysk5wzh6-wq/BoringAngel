@@ -18,9 +18,10 @@ function preload() {
   // preload() 내에서 씬을 생성해야 각 씬의 preload()가 정상적으로 호출됩니다.
   sceneManager = new SceneManager();
   sceneManager.addScene(new Scene1(song)); // Scene1 추가 (인덱스 0)
-  sceneManager.addScene(new Scene2(song, wingdingsFont, bravuraFont)); // Scene2 추가 (인덱스 1)
-  sceneManager.addScene(new Scene3(wingdingsFont)); // Scene3 추가 (인덱스 2)
-  sceneManager.addScene(new Scene4()); // Scene4 추가 (인덱스 3)
+  sceneManager.addScene(new Scene2(song, wingdingsFont, bravuraFont)); // Scene2 (구 Scene1_5) 추가 (인덱스 1)
+  sceneManager.addScene(new Scene3(song, wingdingsFont, bravuraFont)); // Scene3 (구 Scene2) 추가 (인덱스 2)
+  sceneManager.addScene(new Scene4()); // Scene4 (구 Scene3) 추가 (인덱스 3)
+  sceneManager.addScene(new Scene5()); // Scene5 (구 Scene4) 추가 (인덱스 4)
   sceneManager.preload();
 }
 
@@ -105,24 +106,29 @@ function keyPressed() {
     timer = 0; // 타이머를 0으로 리셋
     song.stop();
     sceneManager.showScene(0); // Scene1(인덱스 0) 표시
-    // song.play();
   }
   // 숫자 '2' 키를 누르면 Scene2로 전환
   else if (key === '2') {
     // Scene2로 전환하고, 음원을 60초로 점프시킨 후 재생합니다.
     sceneManager.showScene(1);
-    timer = 60.167; // 타이머 변수도 즉시 60으로 설정
-    song.jump(60.167); // 음원 재생 위치를 60초로 즉시 이동
+    timer = 60.167; // 타이머 변수도 즉시 60.167로 설정
+    song.jump(60.167); // 음원 재생 위치를 60.167초로 즉시 이동
   }
   // 숫자 '3' 키를 누르면 Scene3로 전환
   else if (key === '3') {
     sceneManager.showScene(2);
-    timer = 144.03;
-    song.jump(144.03);
+    timer = 111.0;
+    song.jump(111.0);
   }
   // 숫자 '4' 키를 누르면 Scene4로 전환
   else if (key === '4') {
     sceneManager.showScene(3);
+    timer = 144.03;
+    song.jump(144.03);
+  }
+  // 숫자 '5' 키를 누르면 Scene5로 전환
+  else if (key === '5') {
+    sceneManager.showScene(4);
     timer = 182.1;
     song.jump(182.1);
   }
@@ -134,11 +140,13 @@ function keyPressed() {
       song.stop();
       sceneManager.showScene(0); // Scene1 리셋
     } else if (sceneManager.sceneIndex === 1) {
-      sceneManager.currentScene.reset(); // Scene2 리셋
+      sceneManager.currentScene.enter(); // Scene2 리셋
     } else if (sceneManager.sceneIndex === 2) {
-      sceneManager.showScene(2); // Scene3 리셋
+      sceneManager.currentScene.reset(); // Scene3 리셋
     } else if (sceneManager.sceneIndex === 3) {
       sceneManager.showScene(3); // Scene4 리셋
+    } else if (sceneManager.sceneIndex === 4) {
+      sceneManager.showScene(4); // Scene5 리셋
     }
   }
 
@@ -211,18 +219,18 @@ class SceneManager {
       if (song.isPlaying() && song.currentTime() > 0.1) {
         // --- 씬 전환 로직을 SceneManager 내부로 이동 ---
         const currentTime = song.currentTime();
-
-        // 211초에 엔딩 시퀀스 시작
-        if (currentTime >= 211 && this.sceneIndex === 3 && this.currentScene instanceof Scene4) {
+        
+        // 211초에 엔딩 시퀀스 시작 (Scene5에서)
+        if (currentTime >= 211 && this.sceneIndex === 4 && this.currentScene instanceof Scene5) {
           this.currentScene.startEndingSequence();
         }
-        else if (currentTime >= 182.1 && this.sceneIndex < 3) { // 씬 3보다 낮은 인덱스일 때만 전환
+        else if (currentTime >= 182.1 && this.sceneIndex < 4) { // Scene5로 전환
+          this.showScene(4);
+        } else if (currentTime >= 144.03 && this.sceneIndex < 3) { // Scene4로 전환
           this.showScene(3);
-          // return; // 여기서 return하지 않고 바로 아래의 draw()를 실행하도록 변경
-        } else if (currentTime >= 144.03 && this.sceneIndex < 2) { // 씬 2보다 낮은 인덱스일 때만 전환
+        } else if (currentTime >= 111.0 && this.sceneIndex < 2) { // Scene3로 전환
           this.showScene(2);
-          // return;
-        } else if (currentTime >= 60.167 && this.sceneIndex < 1) { // 씬 1보다 낮은 인덱스일 때만 전환
+        } else if (currentTime >= 60.167 && this.sceneIndex < 1) { // Scene2로 전환
           this.showScene(1);
         }
 
