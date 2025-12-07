@@ -221,7 +221,7 @@ class SceneManager {
         const currentTime = song.currentTime();
         
         // 211초에 엔딩 시퀀스 시작 (Scene5에서)
-        if (currentTime >= 211 && this.sceneIndex === 4 && this.currentScene instanceof Scene5) {
+        if (currentTime >= 211 && this.sceneIndex === 4) {
           this.currentScene.startEndingSequence();
         }
         else if (currentTime >= 182.1 && this.sceneIndex < 4) { // Scene5로 전환

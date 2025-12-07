@@ -29,7 +29,7 @@ class Scene5 {
     this.currentZoom = 1.0; // 현재 줌 배율. 애니메이션에 따라 1.0에서 ZOOM_SCALE까지 변함
 
     // --- 애니메이션 상태 관리 ---
-    this.animationPhase = 'INITIAL'; // 'INITIAL', 'ANIMATING', 'FINAL', 'ANGEL_MODE', 'FADING_OUT', 'CREDITS'
+    this.animationPhase = 'INITIAL'; // 'INITIAL', 'ANIMATING', 'FINAL', 'CASKET_MODE', 'FADING_OUT', 'CREDITS'
     this.animationStartTime = 0; // 'ANIMATING' 단계가 시작된 시간을 기록
     this.finalStateStartTime = 0; // 'FINAL' 단계가 시작된 시간을 기록
     this.fadeOutStartTime = 0; // 'FADING_OUT' 단계 시작 시간
@@ -53,8 +53,36 @@ class Scene5 {
   setup() {
     textAlign(CENTER, CENTER);
     // 얼굴 이모지 배열 초기화
-    this.faceEmojis = ['😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '😊', '😇', '🙂', '🙃', '😉', '😌', '😍', '🥰', '😘', '😗', '😙', '😚', '😋', '😛', '😝', '😜', '🤪', '🤨', '🧐', '🤓', '😎', '🤩', '🥳', '😏', '😒', '😞', '😔', '😟', '😕', '🙁', '☹️', '😣', '😖', '😫', '😩', '🥺', '😢', '😭', '😤', '😠', '😡', '🤬', '🤯', '😳', '🥵', '🥶', '😱', '😨', '😰', '😥', '😓', '🤗', '🤔', '🤭', '🤫', '🤥', '😶', '😐', '😑', '😬', '🙄', '😯', '😦', '😧', '😮', '😲', '🥱', '😴', '🤤', '😪', '😵', '🤐', '🥴', '🤢', '🤮', '🤧', '😷', '🤒', '🤕', '🤑', '🤠', '🤡'];
+    this.faceEmojis = [
+      '🧑', '🧑🏼', '🧑🏾',
+      '🧑‍🦱', '🧑🏼‍🦱', '🧑🏾‍🦱',
+      '🧑‍🦳', '🧑🏼‍🦳', '🧑🏾‍🦳',
+      '👶', '👶🏼', '👶🏾',
+      '👦', '👦🏼', '👦🏾',
+      '👧', '👧🏼', '👧🏾',
+      '🧒', '🧒🏼', '🧒🏾',
+    
+      '👱', '👱🏼', '👱🏾',
+      '👱‍♀️', '👱🏼‍♀️', '👱🏾‍♀️',
+    
+      '👨', '👨🏼', '👨🏾',
 
+      '👨‍🦱', '👨🏼‍🦱', '👨🏾‍🦱',
+      '👨‍🦳', '👨🏼‍🦳', '👨🏾‍🦳',
+
+    
+    
+      '👩‍🦰', '👩🏼‍🦰', '👩🏾‍🦰',
+      '👩‍🦱', '👩🏼‍🦱', '👩🏾‍🦱',
+      '👩‍🦳', '👩🏼‍🦳', '👩🏾‍🦳',
+    
+      '👴', '👴🏼', '👴🏾',
+      '👵', '👵🏼', '👵🏾',
+    
+      '🤴', '🤴🏼', '🤴🏾',
+      
+      '🫅', '🫅🏼', '🫅🏾'
+    ]
     // 얼굴을 제외한 이모지 배열 초기화 (일부만 표시)
     this.nonFaceEmojis = [ // (이모지 목록은 매우 길어서 생략합니다)
         // 동물 및 자연
@@ -150,18 +178,21 @@ class Scene5 {
       }
     } else if (this.animationPhase === 'FINAL') {
       if (now - this.finalStateStartTime > 4000) { // 4초 후
-        this.animationPhase = 'ANGEL_MODE';
+        this.animationPhase = 'CASKET_MODE';
       }
     } else if (this.animationPhase === 'FADING_OUT') {
       const elapsed = now - this.fadeOutStartTime;
       const progress = constrain(elapsed / this.FADE_OUT_DURATION, 0, 1);
 
-      // 배경을 현재 배경에서 흰색으로 서서히 변경
+      // 배경을 흰색으로 고정합니다.
       background(255);
 
-      // 텍스트의 알파값을 255에서 0으로 서서히 변경
+      // Casket 모드의 텍스트(관)는 서서히 사라지게 합니다.
       const textAlpha = lerp(255, 0, progress);
       this.drawGrid(textAlpha);
+
+      // Fading out이 진행되는 동안 Credits를 서서히 나타나게 합니다.
+      this.drawCredits(progress);
 
       if (progress >= 1) {
         this.animationPhase = 'CREDITS';
@@ -170,7 +201,7 @@ class Scene5 {
       pop(); // draw() 시작의 push()에 대한 pop
       return; // 아래 로직 건너뛰기
     } else if (this.animationPhase === 'CREDITS') {
-      this.drawCredits();
+      this.drawCredits(1.0); // 완전히 보이도록 알파 1.0으로 크레딧을 그립니다.
       pop(); // draw() 시작의 push()에 대한 pop
       return; // 아래 로직 건너뛰기
     }
@@ -179,7 +210,10 @@ class Scene5 {
     translate(width / 2, height / 2);
     scale(this.currentZoom);
     translate(-width / 2, -height / 2);
-    translate(random(-this.shakePixel, this.shakePixel), random(-this.shakePixel, this.shakePixel));
+    // Casket 모드가 아닐 때만 떨림 효과를 적용합니다.
+    if (this.animationPhase !== 'CASKET_MODE') {
+      translate(random(-this.shakePixel, this.shakePixel), random(-this.shakePixel, this.shakePixel));
+    }
 
     // 중앙 얼굴 이모지 업데이트
     if (now - this.lastCenterEmojiUpdateTime > this.currentCenterEmojiUpdateInterval) {
@@ -271,8 +305,8 @@ class Scene5 {
     for (let r = constrain(startRow, 0, this.gridSize - 1); r <= constrain(endRow, 0, this.gridSize - 1); r++) {
       for (let c = constrain(startCol, 0, this.gridSize - 1); c <= constrain(endCol, 0, this.gridSize - 1); c++) {
         let emojiToDraw;
-        if (this.animationPhase === 'ANGEL_MODE') {
-          emojiToDraw = (r === centerIndex && c === centerIndex) ? '⚰️' : '';
+        if (this.animationPhase === 'CASKET_MODE') {
+          emojiToDraw = (r === centerIndex && c === centerIndex) ? '🪦' : '';
         } else {
           if (this.emojiGrid[r] && this.emojiGrid[r][c]) {
             emojiToDraw = this.emojiGrid[r][c];
@@ -287,12 +321,17 @@ class Scene5 {
     }
   }
 
-  drawCredits() {
+  drawCredits(fadeProgress = -1) {
     background(255); // 흰색 배경
 
-    const elapsed = millis() - this.creditsStartTime;
-    // 2초에 걸쳐 서서히 나타나는 알파값 계산
-    const alpha = constrain(map(elapsed, 0, this.creditsFadeInDuration, 0, 255), 0, 255);
+    let alpha;
+    if (fadeProgress !== -1) {
+      // FADING_OUT 동안에는 진행률에 따라 알파값 계산
+      alpha = lerp(0, 255, fadeProgress);
+    } else {
+      // CREDITS 상태에서는 항상 완전히 보이도록 설정
+      alpha = 255;
+    }
 
     fill(0, alpha); // 검은색 글씨
     textAlign(CENTER, CENTER);

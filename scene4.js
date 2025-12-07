@@ -176,7 +176,7 @@ class Scene4 {
       const scene4GridSize = 39;
       const emojiSize = min(width / scene4GridSize, height / scene4GridSize) * 0.8;
       textSize(emojiSize);
-      text('😄', width / 2, height / 2);
+      text('👴', width / 2, height / 2);
       pop();
       pop(); // draw() 시작의 push()에 대한 pop
       return; // 이모지를 그린 후, 나머지 draw 로직을 실행하지 않고 종료합니다.

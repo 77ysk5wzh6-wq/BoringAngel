@@ -200,17 +200,6 @@ class Scene2 {
 
       this.drawRandomScores();
 
-      if (currentTime <= this.FAX_EMOJI_START_TIME + 1.0 && currentTime >= this.FAX_EMOJI_START_TIME) {
-        push();
-        textAlign(CENTER, CENTER);
-        fill(random(245, 255));
-        rect(width / 2, height / 2, windowWidth, windowHeight);
-        textSize(50);
-        textFont("'Apple Color Emoji', 'Segoe UI Emoji', sans-serif");
-        text('🔭', width / 2, height / 2);
-        pop();
-      }
-
       if (this.isFlashing) {
         let allRectsDone = true;
         push();

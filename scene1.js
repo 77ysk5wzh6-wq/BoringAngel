@@ -692,7 +692,7 @@ class Scene1 {
       fill(random(245, 255));
       rect(width/2, height/2, windowWidth, windowHeight);
       textSize(63);
-      text('😃',width/2, height/2);
+      text('❤️',width/2, height/2);
       pop();
     }
     if(currentTime < 60.167 && currentTime > 59.167){
@@ -702,7 +702,7 @@ class Scene1 {
       fill(random(245, 255));
       rect(width/2, height/2, windowWidth, windowHeight);
       textSize(50);
-      text('🎻',width/2, height/2);
+      text('👶',width/2, height/2);
       pop();
     }
 
