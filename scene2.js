@@ -176,8 +176,8 @@ class Scene2 {
 
     if (this.song.isPlaying()) {
       const currentTime = this.song.currentTime();
-      const FADE_START_TIME = 95.0;
-      const FADE_DURATION = 3.0;
+      const FADE_START_TIME = 96.0;
+      const FADE_DURATION = 6.0;
       const FADE_END_TIME = FADE_START_TIME + FADE_DURATION;
 
       if (currentTime < FADE_START_TIME) {
@@ -280,11 +280,11 @@ class Scene2 {
             for (let i = 0; i < numToShake; i++) {
               const elementToShake = shuffled[i];
               if (random() < 0.5) {
-                elementToShake.targetShakeOffsetX = elementToShake.currentShakeOffsetX + random(-800, 800);
+                elementToShake.targetShakeOffsetX = elementToShake.currentShakeOffsetX + random(-700, 700);
                 elementToShake.targetShakeOffsetY = elementToShake.currentShakeOffsetY;
               } else {
                 elementToShake.targetShakeOffsetX = elementToShake.currentShakeOffsetX;
-                elementToShake.targetShakeOffsetY = elementToShake.currentShakeOffsetY + random(-800, 800);
+                elementToShake.targetShakeOffsetY = elementToShake.currentShakeOffsetY + random(-700, 700);
               }
             }
           }

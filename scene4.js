@@ -1,10 +1,10 @@
 class Scene4 {
   constructor(bravuraFont) {
 
-    this.SMILE_EMOJI_START_TIME = 180.6;
-    this.EMOJI_DURATION = 1.5;
-    this.GATHER_START_TIME = 174; // 중앙으로 모이는 애니메이션 시작 시간
-    this.GATHER_END_TIME = 180.6;   // 중앙으로 모이는 애니메이션 종료 시간
+    this.SMILE_EMOJI_START_TIME = 181.1;
+    this.EMOJI_DURATION = 1;
+    this.GATHER_START_TIME = 174.6; // 중앙으로 모이는 애니메이션 시작 시간
+    this.GATHER_END_TIME = 181.1;   // 중앙으로 모이는 애니메이션 종료 시간
     this.GATHER_START_RANDOM_DURATION = 5; // 출발 시간의 무작위 범위 (초)
     this.GATHER_END_RANDOM_DURATION = 3;   // 도착 시간의 무작위 범위 (초)
 
@@ -65,22 +65,23 @@ class Scene4 {
     this.jumpBeatDuration = 60000 / this.jumpBpm;
     this.lastJumpTime = 0;
     this.jumpAnimationDuration = 200; // 0.2초
-    this.baseJumpProbability = 0.005; // 5%
+    this.baseJumpProbability = 0.01; // 5%
 
     this.lastHighlightColorChangeTime = 0; // 하이라이트 색상 변경 마지막 시간
-    this.highlightColorChangeInterval = 100; // 0.1초마다 색상 변경
+    this.highlightColorChangeInterval = 200; // 0.1초마다 색상 변경
 
     // --- '7' 키 하이라이트 색상 순환 관련 변수 ---
     this.highlightColorCycle = [
-      () => color(random(70, 170), random(70, 170), random(200, 255), 60), // Blue-ish
-      () => color(random(200, 255), random(70, 170), random(70, 170), 60), // Red-ish
-      () => color(random(70, 170), random(200, 255), random(70, 170), 60), // Green-ish
-      () => color(random(220, 255), random(220, 255), random(50, 100), 60), // Yellow-ish
-      () => color(random(100, 140), 60) // Black-ish
+      (alpha) => color(random(70, 170), random(70, 170), random(200, 255), alpha), // Blue-ish
+      (alpha) => color(random(200, 255), random(70, 170), random(70, 170), alpha), // Red-ish
+      (alpha) => color(random(70, 170), random(200, 255), random(70, 170), alpha), // Green-ish
+      (alpha) => color(random(220, 255), random(220, 255), random(50, 100), alpha), // Yellow-ish
+      (alpha) => color(random(100, 140), alpha) // Black-ish
     ];
     this.highlightColorIndex = 0;
     
   }
+  
 
   // --- 하이라이트 및 점프 확률 계산을 위한 상수 ---
   static get HIGHLIGHT_FADE_START_TIME() { return 166; } // 2분 50초
@@ -339,7 +340,7 @@ class Scene4 {
         // 색상이 변경되는 순간 하이라이트 트리거
         if (random() < highlightProbability) { // 동적 확률 적용
           cell.highlightStartTime = now;
-          cell.highlightColor = this.highlightColorCycle[this.highlightColorIndex]();
+          cell.highlightColor = this.getHighlightColorForCell(gridIdx, 128); // 중간 밝기(128)로 기본값 설정
         }
       }
     }
@@ -375,7 +376,7 @@ class Scene4 {
           noStroke();
           rectMode(CENTER);
           fill(cell.highlightColor);
-          rect(x - this.cellSize / 2, y - this.cellSize / 2, this.cellSize, this.cellSize);
+          rect(x, y, this.cellSize, this.cellSize);
           pop();
         } else {
           cell.highlightStartTime = 0;
@@ -387,7 +388,7 @@ class Scene4 {
           // 문자가 변경되는 순간 하이라이트 트리거
           if (random() < highlightProbability) {
             cell.highlightStartTime = now;
-            cell.highlightColor = this.highlightColorCycle[this.highlightColorIndex]();
+            cell.highlightColor = this.getHighlightColorForCell(j * this.finalCols + i, 128); // 중간 밝기(128)로 기본값 설정
           }
         }
         fill(cell.color);
@@ -460,7 +461,7 @@ class Scene4 {
         // 문자가 변경되지 않았을 때, 확률적으로 하이라이트를 적용합니다.
         else if (cell.highlightStartTime === 0 && random() < highlightProbability) {
           cell.highlightStartTime = now;
-          cell.highlightColor = this.highlightColorCycle[this.highlightColorIndex]();
+          cell.highlightColor = this.getHighlightColorForCell(i, brightness);
         }
 
         this.gridData[i].color = color(0); // 최종 색상은 검정
@@ -503,7 +504,7 @@ class Scene4 {
         // 글자가 변하는 순간, 하이라이트 효과를 트리거합니다.
         if (random() < highlightProbability) {
           cell.highlightStartTime = now;
-          cell.highlightColor = this.highlightColorCycle[this.highlightColorIndex]();
+          cell.highlightColor = this.getHighlightColorForCell(i, 128); // morphing 중에는 밝기 정보가 없으므로 중간값 사용
         }
       }
       fill(0); // 글자 색상은 검정
@@ -630,7 +631,7 @@ class Scene4 {
           push();
           noStroke();
           fill(cell.highlightColor);
-          rect(currentX - this.cellSize / 2, currentY - this.cellSize / 2, this.cellSize, this.cellSize);
+          rect(currentX, currentY, this.cellSize, this.cellSize);
           pop();
         } else {
           cell.highlightStartTime = 0;
@@ -697,7 +698,7 @@ class Scene4 {
         noStroke();
         fill(cell.highlightColor);
         // 셀 배경에 사각형을 그려 하이라이트 효과를 줍니다.
-        rect(x - this.cellSize / 2, y - this.cellSize / 2, this.cellSize, this.cellSize);
+        rect(x, y, this.cellSize, this.cellSize);
         pop();
       } else {
         // 하이라이트 시간이 지나면 초기화합니다.
@@ -709,6 +710,14 @@ class Scene4 {
     }
    }
   }
+
+  getHighlightColorForCell(cellIndex, brightness) {
+    // 밝기(0-255)를 알파값(100-20)으로 매핑합니다. 어두울수록(brightness 0) 진하게(alpha 100).
+    const alpha = map(brightness, 0, 255, 130, 20);
+    const colorFunc = this.highlightColorCycle[this.highlightColorIndex];
+    return colorFunc(alpha);
+  }
+
 
   // 메인 스케치의 keyPressed에서 호출됩니다.
   keyPressed() {
@@ -727,16 +736,7 @@ class Scene4 {
   }
 
   getDynamicProbability(baseProbability) {
-    const songTime = this.song.currentTime();
-    const fadeStartTime = Scene4.HIGHLIGHT_FADE_START_TIME;
-    const fadeEndTime = fadeStartTime + Scene4.HIGHLIGHT_FADE_DURATION;
-
-    if (songTime >= fadeStartTime && songTime < fadeEndTime) {
-      return map(songTime, fadeStartTime, fadeEndTime, baseProbability, 0);
-    } else if (songTime >= fadeEndTime) {
-      return 0;
-    }
-    // 170초 이전에는 기본 확률을 반환합니다.
+    // 항상 기본 확률을 반환하도록 수정하여, 시간이 지나도 확률이 0이 되지 않도록 합니다.
     return baseProbability;
   }
 }

@@ -119,6 +119,11 @@ class Scene1 {
     this.totalStaffLines = 30; // 전체 오선지 수
     this.staffBpm = 450; // 오선지 애니메이션을 위한 BPM
     this.staffBeatDuration = 60000 / this.staffBpm;
+
+    // --- Title Animation ---
+    this.titleAnimationState = 'idle'; // 'idle', 'animating', 'done'
+    this.titleAnimationStartTime = 0;
+    this.titleAnimationDuration = 1000; // 1초
     
   }
 
@@ -164,6 +169,9 @@ class Scene1 {
     this.staffAnimationState = 'idle';
     this.staffAnimationStartTime = 0;
     this.staffLinesToDraw = 0;
+
+    // Title 애니메이션 상태 초기화
+    this.titleAnimationState = 'idle';
 
     // --- 변수 초기값 설정 ---
     this.initialMinRectW = 50; // 중첩사각형중 제일 작은 것
@@ -698,32 +706,51 @@ class Scene1 {
       pop();
     }
 
-    // --- "Sublime Text" 제목 및 "터치하여 시작" 안내 문구 ---
-    // 노래가 재생 중이 아니고, 첫 번째 씬일 때만 표시
-    if (!this.song.isPlaying() && sceneManager.sceneIndex === 0) {
+    // --- "Boring Angel" 제목 ---
+    // 애니메이션이 끝나기 전까지 제목을 그립니다.
+    if (this.titleAnimationState !== 'done') {
       push();
       textAlign(CENTER, CENTER);
-      textSize(20);
-      fill(0,0,255); // 흰색
 
-      // --- "Sublime Text" 제목 ---
-      // 0.5초 간격으로 깜빡이는 효과
-      if (floor(millis() / 500) % 2 === 0) {
-        let title1 = "Boring";
-        let title2 = "Angel";
-        let padding = 10;
-        let initialSize = 400; // 시작 텍스트 크기
-        textSize(initialSize);
-        let textW = textWidth(title1); // "Sublime"을 기준으로 너비 계산
-        // 화면 너비에 맞게 텍스트 크기 동적 조절
-        let finalSize = initialSize;
-        if (textW > width - padding) {
-          finalSize = initialSize * ((width - padding) / textW);
+      let title1 = "Boring";
+      let title2 = "Angel";
+      let padding = 10;
+      let initialSize = 400;
+      let baseSize = initialSize;
+      let textW = textWidth(title1);
+      if (textW > width - padding) {
+        baseSize = initialSize * ((width - padding) / textW);
+      }
+
+      let currentSize = baseSize;
+      let currentAlpha = 255;
+
+      if (this.titleAnimationState === 'animating') {
+        const elapsed = millis() - this.titleAnimationStartTime;
+        const progress = constrain(elapsed / this.titleAnimationDuration, 0, 1);
+        const easedProgress = progress * progress; // Ease-in
+
+        // 크기는 화면의 5배까지, 알파는 0으로
+        currentSize = lerp(baseSize, width * 5, easedProgress);
+        currentAlpha = lerp(255, 0, easedProgress);
+
+        if (progress >= 1) {
+          this.titleAnimationState = 'done';
         }
-        textSize(finalSize);
-        // "Sublime"과 "Text"를 두 줄에 걸쳐 그립니다.
-        text(title1, width / 2, height / 2 - finalSize / 2);
-        text(title2, width / 2, height / 2 + finalSize / 2);
+      }
+
+      fill(0, 0, 255, currentAlpha);
+      textSize(currentSize);
+
+      // 애니메이션 중이 아닐 때만 깜빡임 효과 적용
+      if (this.titleAnimationState === 'idle') {
+        if (floor(millis() / 500) % 2 === 0) {
+          text(title1, width / 2, height / 2 - currentSize / 2);
+          text(title2, width / 2, height / 2 + currentSize / 2);
+        }
+      } else { // 애니메이션 중에는 항상 표시
+        text(title1, width / 2, height / 2 - currentSize / 2);
+        text(title2, width / 2, height / 2 + currentSize / 2);
       }
 
       pop();
@@ -743,6 +770,11 @@ class Scene1 {
       // flashRect 애니메이션은 멈추지 않고 계속 진행되도록 둡니다.
       this.song.pause();
     } else {
+      // --- 타이틀 애니메이션 시작 ---
+      if (this.titleAnimationState === 'idle') {
+        this.titleAnimationState = 'animating';
+        this.titleAnimationStartTime = millis();
+      }
       // 멈춘 상태에서 다시 재생할 때, 멈춰있던 시간만큼 애니메이션 시작 시간을 보정
       if (this.animationState === 'animating' && this.pauseStartTime) {
         this.animationStartTime += millis() - this.pauseStartTime;

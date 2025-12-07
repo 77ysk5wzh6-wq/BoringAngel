@@ -272,7 +272,7 @@ class Scene5 {
       for (let c = constrain(startCol, 0, this.gridSize - 1); c <= constrain(endCol, 0, this.gridSize - 1); c++) {
         let emojiToDraw;
         if (this.animationPhase === 'ANGEL_MODE') {
-          emojiToDraw = (r === centerIndex && c === centerIndex) ? '😇' : '👼';
+          emojiToDraw = (r === centerIndex && c === centerIndex) ? '⚰️' : '';
         } else {
           if (this.emojiGrid[r] && this.emojiGrid[r][c]) {
             emojiToDraw = this.emojiGrid[r][c];

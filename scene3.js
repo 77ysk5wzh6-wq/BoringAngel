@@ -324,7 +324,7 @@ our joy and suffering,
                 // 0.1초 동안 오른쪽으로 이동 (Ease-Out)
                 let t = elapsed / this.shiftOutDuration;
                 let progress = t * (2 - t); // Ease-Out Quad
-                shiftOffset = progress * cellWidth;
+                shiftOffset = progress * cellWidth*1.5;
               } else {
                 // 0.3초 동안 원래 위치로 복귀 (Ease-In)
                 let t = (elapsed - this.shiftOutDuration) / this.shiftInDuration;
@@ -380,7 +380,7 @@ our joy and suffering,
       });
 
       // 2. 그 중 10%를 무작위로 선택합니다.
-      const numToShift = floor(revealedCharIndices.length * 0.3);
+      const numToShift = floor(revealedCharIndices.length * 0.5);
       const shuffledIndices = shuffle(revealedCharIndices);
 
       for (let i = 0; i < numToShift; i++) {
