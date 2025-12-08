@@ -157,12 +157,12 @@ class Scene2 {
 
     for (const element of allElements) {
       element.finale_dx = random(0);
-      element.finale_dy = random(-8000, 30);
+      element.finale_dy = random(-30, 5000);
     }
 
     for (const element of this.backgroundElements) {
       element.finale_dx = random(0);
-      element.finale_dy = random(-8000, 30);
+      element.finale_dy = random(-30, 5000);
     }
   }
 
@@ -255,7 +255,7 @@ class Scene2 {
             const numToShake = floor(shuffled.length * 0.5);
             for (let i = 0; i < numToShake; i++) {
               const elementToShake = shuffled[i];
-              if (random() < 0.5) {
+              if (this.shakeAxisIsX) {
                 elementToShake.targetShakeOffsetX = elementToShake.currentShakeOffsetX + random(-700, 700);
                 elementToShake.targetShakeOffsetY = elementToShake.currentShakeOffsetY;
               } else {
@@ -263,6 +263,8 @@ class Scene2 {
                 elementToShake.targetShakeOffsetY = elementToShake.currentShakeOffsetY + random(-700, 700);
               }
             }
+            // 다음 비트를 위해 축을 토글합니다.
+            this.shakeAxisIsX = !this.shakeAxisIsX;
           }
         }
       }
@@ -520,9 +522,19 @@ class Scene2 {
       }
 
       if (isFinale) {
-        const moveProgress = finaleElapsedTime / this.FINALE_DURATION;
-        x += el.finale_dx * moveProgress;
-        y += el.finale_dy * moveProgress;
+        // 첫 80ms 동안 y축으로 -50px 이동
+        if (finaleElapsedTime < 80) {
+          const progress = finaleElapsedTime / 80;
+          y -= 500 * progress; // 80ms에 걸쳐 -50px까지 이동
+        } else {
+          // 80ms 이후: -50px 위치에서부터 기존 finale 애니메이션 시작
+          y -= 500; // -50px 위치 고정
+          // 남은 시간 동안 finale 애니메이션 진행
+          const remainingDuration = this.FINALE_DURATION - 80;
+          const moveProgress = (finaleElapsedTime - 80) / remainingDuration;
+          x += el.finale_dx * moveProgress;
+          y += el.finale_dy * moveProgress;
+        }
       }
 
       const size = 1.0 * zoomFactor;
@@ -570,18 +582,27 @@ class Scene2 {
     if (staffOnly) return;
 
     const drawElement = (element, drawFunc) => {
-      let x = element.x;
-      let y = element.y;
+      let x = element.x, y = element.y;
+
       if (isFinale) {
-        const moveProgress = finaleElapsedTime / 1000;
-        x += element.finale_dx * moveProgress;
-        y += element.finale_dy * moveProgress;
+        // 첫 80ms 동안 y축으로 -50px 이동
+        if (finaleElapsedTime < 80) {
+          const progress = finaleElapsedTime / 80;
+          y -= 500 * progress; // 80ms에 걸쳐 -50px까지 이동
+        } else {
+          // 80ms 이후: -50px 위치에서부터 기존 finale 애니메이션 시작
+          y -= 500; // -50px 위치 고정
+          const moveProgress = (finaleElapsedTime - 80) / (this.FINALE_DURATION - 80);
+          x += element.finale_dx * moveProgress;
+          y += element.finale_dy * moveProgress;
+        }
       } else if (isShaking) {
         element.currentShakeOffsetX = lerp(element.currentShakeOffsetX, element.targetShakeOffsetX, 0.1);
         element.currentShakeOffsetY = lerp(element.currentShakeOffsetY, element.targetShakeOffsetY, 0.1);
         x += element.currentShakeOffsetX;
         y += element.currentShakeOffsetY;
       }
+
       drawFunc(x, y);
     };
 
@@ -632,7 +653,7 @@ class Scene2 {
       textFont(this.bravuraFont);
     }
     textAlign(CENTER, CENTER);
-    textSize(size * sizeMultiplier);
+    textSize(size * sizeMultiplier * 0.9); // 10% 크기 감소 적용
     noStroke();
     fill(0, alpha);
     text(symbol, x, y);
@@ -640,34 +661,34 @@ class Scene2 {
 
   drawStaff(y, alpha = 255) { stroke(0, alpha); strokeWeight(1); let startX = 50; let endX = width - 50; let lineSpacing = this.note_height; for (let i = 0; i < 5; i++) { let y1 = y - (2 * lineSpacing) + (i * lineSpacing); line(startX, y1, endX, y1); } }
   drawTrebleClef(x, y, size = 50, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.TREBLE_CLEF, x, y); }
-  drawBassClef(x, y, size = 50, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.BASS_CLEF, x, y); }
-  drawWholeRest(x, y, size = 20, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.WHOLE_REST, x, y); }
-  drawHalfRest(x, y, size = 20, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.HALF_REST, x, y); }
-  drawQuarterRest(x, y, size = 20, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.QUARTER_REST, x, y); }
-  drawEighthRest(x, y, size = 20, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.EIGHTH_REST, x, y); }
-  drawSixteenthRest(x, y, size = 20, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.SIXTEENTH_REST, x, y); }
-  drawTimeSignature44(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.TIME_4_4, x, y); }
-  drawTimeSignature68(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.TIME_6_8, x, y); }
-  drawFlat(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.FLAT, x, y); }
-  drawSharp(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.SHARP, x, y); }
-  drawNatural(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.NATURAL, x, y); }
-  drawFermata(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.FERMATA, x, y); }
-  drawAccent(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.ACCENT, x, y); }
-  drawStaccato(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.STACCATO, x, y); }
-  drawTenuto(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.TENUTO, x, y); }
-  drawTrill(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.TRILL, x, y); }
-  drawMordent(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.MORDENT, x, y); }
-  drawTurn(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.TURN, x, y); }
-  drawCrescendo(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.CRESCENDO, x, y); }
-  drawDecrescendo(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.DECRESCENDO, x, y); }
-  drawPedal_mark(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.PEDAL_MARK, x, y); }
-  drawDouble_barline(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.DOUBLE_BARLINE, x, y); }
-  drawSfz(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.SFZ, x, y); }
-  drawArpeggio(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.ARPEGGIO, x, y); }
-  drawSegno(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.SEGNO, x, y); }
-  drawTime_c(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.TIME_C, x, y); }
-  drawEighthNote(x, y, size = 20, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.EIGHTH_NOTE, x, y); }
-  drawSixteenthNote(x, y, size = 20, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.SIXTEENTH_NOTE, x, y); }
+  drawBassClef(x, y, size = 50, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier * 0.9); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.BASS_CLEF, x, y); }
+  drawWholeRest(x, y, size = 20, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier * 0.9); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.WHOLE_REST, x, y); }
+  drawHalfRest(x, y, size = 20, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier * 0.9); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.HALF_REST, x, y); }
+  drawQuarterRest(x, y, size = 20, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier * 0.9); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.QUARTER_REST, x, y); }
+  drawEighthRest(x, y, size = 20, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier * 0.9); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.EIGHTH_REST, x, y); }
+  drawSixteenthRest(x, y, size = 20, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier * 0.9); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.SIXTEENTH_REST, x, y); }
+  drawTimeSignature44(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier * 0.9); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.TIME_4_4, x, y); }
+  drawTimeSignature68(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier * 0.9); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.TIME_6_8, x, y); }
+  drawFlat(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier * 0.9); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.FLAT, x, y); }
+  drawSharp(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier * 0.9); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.SHARP, x, y); }
+  drawNatural(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier * 0.9); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.NATURAL, x, y); }
+  drawFermata(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier * 0.9); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.FERMATA, x, y); }
+  drawAccent(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier * 0.9); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.ACCENT, x, y); }
+  drawStaccato(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier * 0.9); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.STACCATO, x, y); }
+  drawTenuto(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier * 0.9); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.TENUTO, x, y); }
+  drawTrill(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier * 0.9); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.TRILL, x, y); }
+  drawMordent(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier * 0.9); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.MORDENT, x, y); }
+  drawTurn(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier * 0.9); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.TURN, x, y); }
+  drawCrescendo(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier * 0.9); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.CRESCENDO, x, y); }
+  drawDecrescendo(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier * 0.9); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.DECRESCENDO, x, y); }
+  drawPedal_mark(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier * 0.9); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.PEDAL_MARK, x, y); }
+  drawDouble_barline(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier * 0.9); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.DOUBLE_BARLINE, x, y); }
+  drawSfz(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier * 0.9); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.SFZ, x, y); }
+  drawArpeggio(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier * 0.9); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.ARPEGGIO, x, y); }
+  drawSegno(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier * 0.9); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.SEGNO, x, y); }
+  drawTime_c(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier * 0.9); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.TIME_C, x, y); }
+  drawEighthNote(x, y, size = 20, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier * 0.9); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.EIGHTH_NOTE, x, y); }
+  drawSixteenthNote(x, y, size = 20, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier * 0.9); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.SIXTEENTH_NOTE, x, y); }
 
   keyPressed() {
     if (key === ' ') {
@@ -769,20 +790,20 @@ class BeamNote {
     let maxStem1 = column1StemEnds.length > 0 ? max(column1StemEnds) : 0;
     let maxStem2 = column2StemEnds.length > 0 ? max(column2StemEnds) : 0;
 
-    [...this.column1Notes, ...this.column2Notes].forEach(note => {
-      this.drawNoteHead(note.x, note.y, alpha, sizeMultiplier, note_width, note_height);
-    });
-
     this.column1Notes.forEach(note => {
       this.drawStem(note.x, note.y, note.stemDirection, alpha, sizeMultiplier, note_width, maxStem1);
     });
     this.column2Notes.forEach(note => {
       this.drawStem(note.x, note.y, note.stemDirection, alpha, sizeMultiplier, note_width, maxStem2);
     });
-
+    
     if (this.beamCount > 0) {
       this.drawBeams(alpha, sizeMultiplier, note_width, maxStem1, maxStem2);
     }
+    
+    [...this.column1Notes, ...this.column2Notes].forEach(note => {
+      this.drawNoteHead(note.x, note.y, alpha, sizeMultiplier, note_width, note_height);
+    });
 
     pop();
   }
@@ -792,7 +813,7 @@ class BeamNote {
     translate(x, y);
     rotate(-PI / 8);
     fill(0, alpha);
-    ellipse(0, 0, note_width * sizeMultiplier * 0.85, note_height * sizeMultiplier * 0.85);
+    ellipse(0, 0, note_width * sizeMultiplier*1.1, note_height * sizeMultiplier);
     pop();
   }
 

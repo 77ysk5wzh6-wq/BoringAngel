@@ -18,7 +18,7 @@ function preload() {
   // preload() 내에서 씬을 생성해야 각 씬의 preload()가 정상적으로 호출됩니다.
   sceneManager = new SceneManager();
   sceneManager.addScene(new Scene1(song)); // Scene1 추가 (인덱스 0)
-  sceneManager.addScene(new Scene2(song, wingdingsFont, bravuraFont)); // Scene2 (구 Scene1_5) 추가 (인덱스 1)
+  sceneManager.addScene(new Scene2(song, wingdingsFont, bravuraFont)); // Scene2 추가 (인덱스 1)
   sceneManager.addScene(new Scene3(song, wingdingsFont, bravuraFont)); // Scene3 (구 Scene2) 추가 (인덱스 2)
   sceneManager.addScene(new Scene4()); // Scene4 (구 Scene3) 추가 (인덱스 3)
   sceneManager.addScene(new Scene5()); // Scene5 (구 Scene4) 추가 (인덱스 4)

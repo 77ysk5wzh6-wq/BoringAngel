@@ -125,6 +125,13 @@ class Scene1 {
     this.titleAnimationStartTime = 0;
     this.titleAnimationDuration = 1000; // 1초
     
+    // --- Arrow Key Move Animation ---
+    this.arrowMoveDirection = null;
+    this.arrowMoveStartTime = 0;
+    this.arrowMoveDuration = 60; // 0.1초
+    this.arrowMoveOffsetX = 0;
+    this.arrowMoveOffsetY = 0;
+    
   }
 
   setup() {
@@ -172,6 +179,12 @@ class Scene1 {
 
     // Title 애니메이션 상태 초기화
     this.titleAnimationState = 'idle';
+
+    // Arrow Key 애니메이션 상태 초기화
+    this.arrowMoveDirection = null;
+    this.arrowMoveStartTime = 0;
+    this.arrowMoveOffsetX = 0;
+    this.arrowMoveOffsetY = 0;
 
     // --- 변수 초기값 설정 ---
     this.initialMinRectW = 50; // 중첩사각형중 제일 작은 것
@@ -221,6 +234,28 @@ class Scene1 {
     // =================================================
     // 1. 시간 및 상태 업데이트 (음악 재생 중)
     // =================================================
+
+    // --- Arrow Key 애니메이션 업데이트 ---
+    if (this.arrowMoveDirection) {
+      const elapsed = millis() - this.arrowMoveStartTime;
+      if (elapsed < this.arrowMoveDuration) {
+        const progress = elapsed / this.arrowMoveDuration;
+        // sin 함수를 이용해 부드럽게 나갔다가 돌아오는 움직임 (0 -> 1 -> 0)
+        const moveProgress = sin(progress * PI);
+
+        if (this.arrowMoveDirection === 'LEFT') this.arrowMoveOffsetX = - (width / 10) * moveProgress;
+        else if (this.arrowMoveDirection === 'RIGHT') this.arrowMoveOffsetX = (width / 10) * moveProgress;
+        else if (this.arrowMoveDirection === 'UP') this.arrowMoveOffsetY = - (height / 7) * moveProgress;
+        else if (this.arrowMoveDirection === 'DOWN') this.arrowMoveOffsetY = (height / 7) * moveProgress;
+
+      } else {
+        // 애니메이션 종료
+        this.arrowMoveDirection = null;
+        this.arrowMoveOffsetX = 0;
+        this.arrowMoveOffsetY = 0;
+      }
+    }
+
     if (this.song.isPlaying()) {
       // 초침 비트에 맞춰 중앙 원 색상 변경
    
@@ -610,23 +645,23 @@ class Scene1 {
 
     // 원 1 (중앙 고정)
       if (this.stretchAnimationState === 'idle') {
-        ellipse(this.centerCircle_y, currentY, this.centerCircleDiameter, this.centerCircleDiameter);
+        ellipse(this.centerCircle_y + this.arrowMoveOffsetX, currentY + this.arrowMoveOffsetY, this.centerCircleDiameter, this.centerCircleDiameter);
       } else {
-        rect(width / 2, currentY, this.stretchedWidth, this.stretchedHeight);
+        rect(width / 2 + this.arrowMoveOffsetX, currentY + this.arrowMoveOffsetY, this.stretchedWidth, this.stretchedHeight);
       }
     
       // 원 2 (오른쪽으로 이동) - 스트레치 애니메이션 적용
       if (this.stretchAnimationState === 'idle') {
-        ellipse(width / 2 + this.circleA_x_offset, currentY, this.centerCircleDiameter, this.centerCircleDiameter);
+        ellipse(width / 2 + this.circleA_x_offset + this.arrowMoveOffsetX, currentY + this.arrowMoveOffsetY, this.centerCircleDiameter, this.centerCircleDiameter);
       } else {
-        rect(width / 2 + this.circleA_x_offset, currentY, this.sideStretchedWidth, this.stretchedHeight);
+        rect(width / 2 + this.circleA_x_offset + this.arrowMoveOffsetX, currentY + this.arrowMoveOffsetY, this.sideStretchedWidth, this.stretchedHeight);
       }
     
       // 원 3 (왼쪽으로 이동) - 스트레치 애니메이션 적용
       if (this.stretchAnimationState === 'idle') {
-        ellipse(width / 2 + this.circleB_x_offset, currentY, this.centerCircleDiameter, this.centerCircleDiameter);
+        ellipse(width / 2 + this.circleB_x_offset + this.arrowMoveOffsetX, currentY + this.arrowMoveOffsetY, this.centerCircleDiameter, this.centerCircleDiameter);
       } else {
-        rect(width / 2 + this.circleB_x_offset, currentY, this.sideStretchedWidth, this.stretchedHeight);
+        rect(width / 2 + this.circleB_x_offset + this.arrowMoveOffsetX, currentY + this.arrowMoveOffsetY, this.sideStretchedWidth, this.stretchedHeight);
       }
     }
 
@@ -818,6 +853,20 @@ class Scene1 {
   keyPressed() {
     if (keyCode === 32) { // 32 is the keycode for SPACEBAR
       this.togglePlay();
+    } else if (this.arrowMoveDirection === null) { // 다른 화살표 애니메이션이 진행 중이 아닐 때만
+      if (keyCode === LEFT_ARROW) {
+        this.arrowMoveDirection = 'LEFT';
+        this.arrowMoveStartTime = millis();
+      } else if (keyCode === RIGHT_ARROW) {
+        this.arrowMoveDirection = 'RIGHT';
+        this.arrowMoveStartTime = millis();
+      } else if (keyCode === UP_ARROW) {
+        this.arrowMoveDirection = 'UP';
+        this.arrowMoveStartTime = millis();
+      } else if (keyCode === DOWN_ARROW) {
+        this.arrowMoveDirection = 'DOWN';
+        this.arrowMoveStartTime = millis();
+      }
     }
   }
 

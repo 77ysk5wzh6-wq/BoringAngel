@@ -1,5 +1,5 @@
 class Scene3 {
-  constructor(song, wingdingsFont, bravuraFont) {
+  constructor(song, wingdingsFont) {
     // --- 시간 기반 상수 ---
     this.SCENE_START_TIME = 112.0;
     this.HIGHLIGHT_START_TIME = 112.0; // 하이라이트 효과 시작 시간
@@ -68,6 +68,7 @@ our joy and suffering,
     this.shiftOutDuration = 10; // 0.1초 동안 이동
     this.shiftInDuration = 100;  // 0.3초 동안 복귀
     this.shiftAnimationDuration = this.shiftOutDuration + this.shiftInDuration; // 총 애니메이션 시간
+    this.shiftDirection = 'RIGHT'; // 글자 이동 방향 (UP, DOWN, LEFT, RIGHT)
 
     this.isSetupComplete = false; // setup 함수가 완료되었는지 확인
 
@@ -100,6 +101,7 @@ our joy and suffering,
     this.highlightFadeStartTime = 0; // 리셋 시 초기화
     this.isInverting = false; // 리셋 시 색상 반전 상태 초기화
     this.inversionStartTime = 0;
+    this.shiftDirection = 'RIGHT'; // 씬 시작 시 방향 초기화
 
     // --- 배경 그리드 데이터 생성 ---
     this.finalGridState = [];
@@ -292,7 +294,7 @@ our joy and suffering,
     const cellHeight = height / this.gridRows;
     const textSizeValue = cellHeight;
 
-    // --- RGB Delay (CMY Split) Effect ---
+    // --- 효과를 위한 변수 ---
     let vol = this.amp.getLevel();
     let offset = map(vol, 0, 1, 0, 1.5); // 배경 그리드는 더 작은 오프셋 사용
     let shakeAmt = map(vol, 0, 1, 0, 2); // 배경 그리드는 더 작은 떨림 사용
@@ -311,29 +313,38 @@ our joy and suffering,
         const cell = this.finalGridState[gridIndex];
 
         if (cell && cell.revealed) {
-          const char = cell.char;
-          let x = i * cellWidth + cellWidth / 2;
-          const y = j * cellHeight + cellHeight / 2;
+          let char = cell.char;
+          let x = i * cellWidth + cellWidth / 2; // 기본 x, y 좌표
+          let y = j * cellHeight + cellHeight / 2;
 
           // --- 글자 이동 애니메이션 계산 ---
           if (cell.isShifting) {
             const elapsed = now - cell.shiftStartTime;
             if (elapsed < this.shiftAnimationDuration) {
               let shiftOffset;
+              let moveProgress;
               if (elapsed < this.shiftOutDuration) {
-                // 0.1초 동안 오른쪽으로 이동 (Ease-Out)
+                // 밖으로 나가는 움직임 (Ease-Out)
                 let t = elapsed / this.shiftOutDuration;
-                let progress = t * (2 - t); // Ease-Out Quad
-                shiftOffset = progress * cellWidth*1.5;
+                moveProgress = t * (2 - t); // Ease-Out Quad
               } else {
-                // 0.3초 동안 원래 위치로 복귀 (Ease-In)
+                // 원래 위치로 돌아오는 움직임 (Ease-In)
                 let t = (elapsed - this.shiftOutDuration) / this.shiftInDuration;
-                let progress = t * t; // Ease-In Quad
-                shiftOffset = (1 - progress) * cellWidth;
+                moveProgress = 1 - (t * t); // Ease-In Quad (1 -> 0)
               }
-              x += shiftOffset;
+
+              // shiftDirection에 따라 x 또는 y 좌표에 오프셋 적용
+              if (this.shiftDirection === 'LEFT') {
+                x -= moveProgress * cellWidth * 1.5;
+              } else if (this.shiftDirection === 'RIGHT') {
+                x += moveProgress * cellWidth * 1.5;
+              } else if (this.shiftDirection === 'UP') {
+                y -= moveProgress * cellHeight * 1.5;
+              } else if (this.shiftDirection === 'DOWN') {
+                y += moveProgress * cellHeight * 1.5;
+              }
             } else {
-              cell.isShifting = false; // 애니메이션 종료
+              cell.isShifting = false;
             }
           }
 
@@ -459,7 +470,8 @@ our joy and suffering,
       this.highlightedWords = []; // 기존 하이라이트 초기화
 
       // Fisher-Yates shuffle 알고리즘으로 목록을 무작위로 섞음
-      revealedWordIndices = shuffle(revealedWordIndices);
+      // shuffle()이 반환하는 읽기 전용 배열을 쓰기 가능한 배열로 복사합니다.
+      revealedWordIndices = shuffle(revealedWordIndices).slice();
 
       for (let i = 0; i < numToHighlight; i++) {
         if (i >= revealedWordIndices.length) break;
@@ -617,538 +629,6 @@ our joy and suffering,
     }
   }
 
-  // --- randomScores.js에서 가져온 함수들 ---
-  drawRandomScores() {
-    const currentTime = this.song.currentTime();
-
-    if (this.isStopped) {
-      const isShaking = currentTime >= this.shakeAnimationStartTime;
-      if (isShaking) {
-        const now = millis();
-        // 225BPM 비트에 맞춰 매번 새로운 10%의 요소를 선택합니다.
-        if (now - this.lastShakeTime > this.shakeBeatDuration) {
-          this.lastShakeTime = now;
-          this.backgroundFlashTime = now; // 배경 플래시 시작 시간 기록
-
-          // 최적화: 흔들릴 요소 목록이 비어있으면 한 번만 생성
-          if (this.allShakeableElements.length === 0) {
-            if (this.quadrantData[0]) {
-              const data = this.quadrantData[0];
-              this.allShakeableElements.push(...data.savedNotes, ...data.savedBeamNotes, ...data.savedRests, ...data.savedTimeSignatures, ...data.savedClefs);
-            }
-            this.allShakeableElements.push(...this.backgroundElements);
-            // 각 요소에 흔들림 속성을 한 번만 초기화
-            this.allShakeableElements.forEach(el => {
-              el.currentShakeOffsetX = 0;
-              el.targetShakeOffsetX = 0;
-              el.currentShakeOffsetY = 0;
-              el.targetShakeOffsetY = 0;
-              // finale 애니메이션의 잔여 속도를 제거하여 대각선 움직임을 방지합니다.
-              el.finale_dx = 0;
-              el.finale_dy = 0;
-            });
-          }
-
-          if (this.allShakeableElements.length > 0) {
-            const shuffled = shuffle(this.allShakeableElements);
-            const numToShake = floor(shuffled.length * 0.5);
-            for (let i = 0; i < numToShake; i++) {
-              const elementToShake = shuffled[i];
-              if (random() < 0.5) { // 50% 확률로 x축으로만 이동
-                elementToShake.targetShakeOffsetX = elementToShake.currentShakeOffsetX + random(-800, 800);
-                elementToShake.targetShakeOffsetY = elementToShake.currentShakeOffsetY; // y축 움직임 중지
-              } else { // 50% 확률로 y축으로만 이동
-                elementToShake.targetShakeOffsetX = elementToShake.currentShakeOffsetX; // x축 움직임 중지
-                elementToShake.targetShakeOffsetY = elementToShake.currentShakeOffsetY + random(-800, 800);
-              }
-            }
-          }
-        }
-      }
-
-      this.drawGrid(this.quadrantData, this.gridMode, 0, -1, false, -1, isShaking);
-      return;
-    }
-
-    // 최종 피날레 진행 중
-    if (this.finalFinaleState === 'running') {
-      let elapsed = millis() - this.finalFinaleStartTime;
-      if (elapsed < this.finalFinaleDuration) {
-        // 1초에 걸쳐 투명하게 만듦
-        let finaleAlpha = map(elapsed, 0, this.finalFinaleDuration, 255, 0);
-        this.drawGrid(this.quadrantData, this.gridMode, 0, elapsed, false, finaleAlpha);
-      } else {
-        this.finalFinaleState = 'done';
-      }
-      return; // 다른 악보 생성 로직 실행 방지
-    }
-
-    // 최종 피날레가 끝난 후에는 오선지만 그림
-    if (this.finalFinaleState === 'done') {
-      this.drawGrid(this.quadrantData, this.gridMode, 0, -1, true); // 마지막 인자를 true로 하여 오선지만 그리도록 함
-      return;
-    }
-
-    let elapsedTime = millis() - this.cycleStartTime;
-
-    // 전체 루프(6단계 + 피날레)가 끝나면 새로운 사이클 시작
-    // 피날레 애니메이션이 160ms 진행되었을 때 (겹치기 시작하는 시점) 새 사이클 시작
-    if (elapsedTime >= this.CYCLE_DURATION + 160) {
-      // 현재 악보 데이터를 이전 피날레 데이터로 옮깁니다.
-      this.previousFinaleData = { ...this.quadrantData[0] };
-      this.previousFinaleStartTime = this.cycleStartTime + this.CYCLE_DURATION;
-      this.startNewCycle();
-      elapsedTime = millis() - this.cycleStartTime; // 경과 시간 재계산
-    }
-
-    // 6단계 애니메이션 또는 피날레 애니메이션 분기
-    if (elapsedTime < this.CYCLE_DURATION) { // --- 6단계 오선 채우기 애니메이션 ---
-      let step = floor(elapsedTime / this.STEP_DURATION);
-      if (step < this.NUM_STEPS && step !== this.currentStaveStep) {
-        this.currentStaveStep = step;
-        let staveToDrawOn = this.shuffledStaveIndices[this.currentStaveStep];
-        const quadrantIdx = 0;
-        if (this.currentStaveStep === 0) {
-          this.quadrantData[quadrantIdx] = this.createEmptyQuadrantData();
-        }
-        this.generateElementsForStave(staveToDrawOn, quadrantIdx);
-
-        // 배경 악보도 단계별로 생성
-        if (this.zoomState !== 'idle') {
-          this.generateBackgroundElements();
-        }
-
-        // 77.5초 이후 마지막 스텝(5)이 완료되면 멈춤 플래그를 설정합니다.
-        if (currentTime > 77.5 && step === this.NUM_STEPS - 1) {
-          this.isStopped = true;
-          this.lastShakeTime = millis(); // 흔들림 시작 시간 초기화
-          // 현재 상태를 그리고 즉시 반환하여 finale 애니메이션으로 넘어가지 않도록 함
-          this.drawGrid(this.quadrantData, this.gridMode);
-          return;
-        }
-      }
-      // 일반 상태: 현재 그리드만 그림
-      this.drawGrid(this.quadrantData, this.gridMode);
-
-    } else { // --- 100ms 피날레 애니메이션 ---
-      // 피날레 첫 프레임에 각 요소의 이동 방향을 설정
-      if (this.currentStaveStep !== -2) { // -2는 피날레가 준비되었음을 나타내는 특별 값
-        this.prepareFinale();
-        this.currentStaveStep = -2; // 준비 완료로 표시
-
-        // 97.292초가 지났고, 한 사이클이 막 끝난 이 시점에 최종 피날레를 시작합니다.
-        if (currentTime > 97.292 && this.finalFinaleState === 'idle') {
-          this.finalFinaleState = 'running';
-          this.finalFinaleStartTime = millis();
-          // prepareFinale()는 이미 호출되었으므로 다시 호출할 필요가 없습니다.
-          return; // 최종 피날레 로직으로 넘어갑니다.
-        }
-      }
-
-      let finaleElapsedTime = elapsedTime - this.CYCLE_DURATION;
-
-      // 피날레 애니메이션과 함께 그리드 그리기
-      this.drawGrid(this.quadrantData, this.gridMode, 0, finaleElapsedTime);
-    }
-
-    // 이전 사이클의 피날레 애니메이션이 아직 진행 중이라면 함께 그립니다.
-    if (this.previousFinaleData) {
-      let prevFinaleElapsedTime = millis() - this.previousFinaleStartTime;
-      this.drawGrid([this.previousFinaleData], this.gridMode, 0, prevFinaleElapsedTime);
-    }
-  }
-
-  drawGrid(quadrantData, gridMode, globalXOffset = 0, finaleElapsedTime = -1, staffOnly = false, overrideAlpha = -1, isShaking = false) {
-    const scaleFactor = 1.0 / gridMode;
-    const sizeMultiplier = scaleFactor;
-
-    // 피날레 애니메이션 중일 경우 알파 값 계산 (255 -> 0)
-    const isFinale = finaleElapsedTime >= 0;
-    let finaleAlpha = isFinale ? map(finaleElapsedTime, 0, this.FINALE_DURATION, 255, 0) : 255;
-    if (overrideAlpha !== -1) finaleAlpha = overrideAlpha; // 77초 피날레의 알파값으로 덮어쓰기
-
-    // 줌 애니메이션 진행
-    if (this.zoomState === 'zooming') {
-      let elapsed = (millis() - this.zoomStartTime) / 1000;
-      let progress = constrain(elapsed / this.zoomDuration, 0, 1);
-      this.currentZoom = lerp(1.0, this.targetZoom, progress);
-      if (progress >= 1) {
-        this.zoomState = 'done';
-        this.currentZoom = this.targetZoom;
-      }
-    }
-
-    // --- 배경 악보 그리기 ---
-    if (!staffOnly) {
-      this.drawBackgroundElements(finaleAlpha, this.currentZoom, finaleElapsedTime, isShaking);
-    }
-
-    // --- 메인 악보 그리기 (줌 적용) ---
-    push();
-    // 줌의 중심을 화면 중앙으로 맞추기 위해 translate 사용
-    translate(width / 2, height / 2);
-    scale(this.currentZoom);
-    translate(-width / 2, -height / 2);
-
-    const data = quadrantData[0]; // 항상 첫 번째 그리드 데이터 사용
-    if (staffOnly) {
-      // staffOnly 모드일 때는 악보 데이터가 없어도 오선지를 그립니다.
-      this.drawScoreElements(null, finaleElapsedTime, finaleAlpha, sizeMultiplier, staffOnly, isShaking);
-    } else if (data) {
-      // 일반 모드에서는 데이터가 있을 때만 그립니다.
-      this.drawScoreElements(data, finaleElapsedTime, finaleAlpha, sizeMultiplier, staffOnly, isShaking);
-    }
-    pop();
-  }
-
-  generateElementsForStave(staveIndex, quadrantIdx) {
-    const data = this.quadrantData[quadrantIdx];
-
-    const staveYPositions = [
-      100 + 0 * this.note_height * 25, 100 + this.note_height * 10 + 0 * this.note_height * 25,
-      100 + 1 * this.note_height * 25, 100 + this.note_height * 10 + 1 * this.note_height * 25,
-      100 + 2 * this.note_height * 25, 100 + this.note_height * 10 + 2 * this.note_height * 25,
-    ];
-    const currentStaveY = staveYPositions[staveIndex];
-
-    // --- note_density를 동적으로 계산 ---
-    const scene2StartTime = 60.167;
-    const currentTime = this.song.currentTime();
-    const scene2EndTime = scene2StartTime + this.densityAnimationDuration;
-    // 현재 진행률(0.0 ~ 1.0)을 계산합니다.
-    const progress = constrain(map(currentTime, scene2StartTime, scene2EndTime, 0, 1), 0, 1);
-    // 진행률에 따라 note_density를 30에서 1로 선형 보간합니다.
-    const density = lerp(this.initialStaffDensity, this.targetStaffDensity, progress);
-
-    for (let i = 0; i < density; i++) {
-      data.savedNotes.push({ type: 'whole', x: random(width), y: currentStaveY + random(-3 * this.note_height, 3 * this.note_height), barChance: random(), dotChance: random() });
-      data.savedNotes.push({ type: 'half', x: random(width), y: currentStaveY + random(-3 * this.note_height, 3 * this.note_height), isRotated: random() < 0.5, barChance: random(), dotChance: random() });
-      data.savedNotes.push({ type: 'quarter', x: random(width), y: currentStaveY + random(-3 * this.note_height, 3 * this.note_height), isRotated: random() < 0.5, barChance: random(), dotChance: random() });
-
-      let beamNote = new BeamNote(0, 0, this.note_height);
-      data.savedBeamNotes.push({ beamNote: beamNote, x: random(width), y: currentStaveY + random(-3 * this.note_height, 3 * this.note_height), isRotated: random() >= 0.5 });
-
-      data.savedRests.push({ type: 'whole', x: random(width), y: currentStaveY + random(-3 * this.note_height, 3 * this.note_height) });
-      data.savedRests.push({ type: 'half', x: random(width), y: currentStaveY + random(-3 * this.note_height, 3 * this.note_height) });
-      data.savedRests.push({ type: 'quarter', x: random(width), y: currentStaveY + random(-3 * this.note_height, 3 * this.note_height) });
-      data.savedRests.push({ type: 'eighth', x: random(width), y: currentStaveY + random(-3 * this.note_height, 3 * this.note_height) });
-      data.savedRests.push({ type: 'sixteenth', x: random(width), y: currentStaveY + random(-3 * this.note_height, 3 * this.note_height) });
-
-      data.savedTimeSignatures.push({ type: '44', x: random(width), y: currentStaveY + random(-3 * this.note_height, 3 * this.note_height) });
-      data.savedTimeSignatures.push({ type: '68', x: random(width), y: currentStaveY + random(-3 * this.note_height, 3 * this.note_height) });
-
-      // 새로 추가된 심볼들 생성
-      const symbolTypes = Object.keys(this.BRAVURA_SYMBOLS).filter(key => ![
-        'TREBLE_CLEF', 'BASS_CLEF', 'WHOLE_REST', 'HALF_REST', 'QUARTER_REST', 'EIGHTH_REST', 'SIXTEENTH_REST',
-        'TIME_4_4', 'TIME_3_4', 'TIME_2_4', 'TIME_C', 'WHOLE_NOTE', 'HALF_NOTE', 'QUARTER_NOTE', 'EIGHTH_NOTE', 'SIXTEENTH_NOTE'
-      ].includes(key));
-
-      if (random() < 0.3) { // 30% 확률로 심볼 추가
-        const randomSymbolKey = random(symbolTypes);
-        data.savedSymbols.push({
-          type: randomSymbolKey,
-          x: random(width),
-          y: currentStaveY + random(-3 * this.note_height, 3 * this.note_height)
-        });
-      }
-
-      data.savedNotes.push({ type: 'eighth', x: random(width), y: currentStaveY + random(-3 * this.note_height, 3 * this.note_height) });
-      data.savedNotes.push({ type: 'sixteenth', x: random(width), y: currentStaveY + random(-3 * this.note_height, 3 * this.note_height) });
-    }
-
-    if (density > 0) {
-      if (random() < 0.5) {
-        data.savedClefs.push({ type: 'treble', x: 63, y: currentStaveY + random(-2 * this.note_height, 2 * this.note_height) });
-      } else {
-        data.savedClefs.push({ type: 'bass', x: 63, y: currentStaveY + random(-2 * this.note_height, 2 * this.note_height) });
-      }
-    }
-  }
-
-  generateBackgroundElements() {
-    // --- 배경 악보 밀도를 동적으로 계산 ---
-    const scene2StartTime = 60.167;
-    const currentTime = this.song.currentTime();
-    const scene2EndTime = scene2StartTime + this.densityAnimationDuration;
-    const progress = constrain(map(currentTime, scene2StartTime, scene2EndTime, 0, 1), 0, 1);
-    // 진행률에 따라 배경 악보의 밀도를 0에서 500으로 선형 보간
-    const currentTotalDensity = lerp(this.initialBackgroundDensity, this.targetBackgroundDensity, progress);
-
-    // 전체 밀도를 6단계로 나누어 각 단계마다 생성
-    const density = currentTotalDensity / this.NUM_STEPS;
-    for (let i = 0; i < density; i++) {
-      const x = random(width);
-      const y = random(height);
-      const typeRoll = random();
-
-      let newElement = { x, y, finale_dx: 0, finale_dy: 0 };
-
-      if (typeRoll < 0.25) { // Note
-        const noteTypeRoll = random();
-        let noteType;
-        if (noteTypeRoll < 0.25) noteType = 'whole';
-        else if (noteTypeRoll < 0.5) noteType = 'half';
-        else if (noteTypeRoll < 0.75) noteType = 'quarter';
-        else if (noteTypeRoll < 0.875) noteType = 'eighth';
-        else noteType = 'sixteenth';
-
-        newElement.type = 'note';
-        newElement.subType = noteType;
-        newElement.isRotated = random() < 0.5;
-        newElement.barChance = random();
-        newElement.dotChance = random();
-
-      } else if (typeRoll < 0.5) { // Rest
-        const restTypeRoll = random();
-        let restType;
-        if (restTypeRoll < 0.25) restType = 'whole';
-        else if (restTypeRoll < 0.5) restType = 'half';
-        else if (restTypeRoll < 0.75) restType = 'quarter';
-        else restType = 'eighth';
-
-        newElement.type = 'rest';
-        newElement.subType = restType;
-
-      } else if (typeRoll < 0.65) { // Clef
-        const clefType = random() < 0.5 ? 'treble' : 'bass';
-        newElement.type = 'clef';
-        newElement.subType = clefType;
-
-      } else if (typeRoll < 0.8) { // New Symbols
-        const symbolTypes = Object.keys(this.BRAVURA_SYMBOLS).filter(key => ![
-          'TREBLE_CLEF', 'BASS_CLEF', 'WHOLE_REST', 'HALF_REST', 'QUARTER_REST', 'EIGHTH_REST', 'SIXTEENTH_REST',
-          'TIME_4_4', 'TIME_3_4', 'TIME_2_4', 'TIME_C', 'WHOLE_NOTE', 'HALF_NOTE', 'QUARTER_NOTE', 'EIGHTH_NOTE', 'SIXTEENTH_NOTE'
-        ].includes(key));
-
-        const randomSymbolKey = random(symbolTypes);
-        newElement.type = 'symbol';
-        newElement.subType = randomSymbolKey;
-
-      } else { // BeamNote
-        newElement.type = 'beam';
-        newElement.beamNote = new BeamNote(x, y, this.note_height);
-      }
-      this.backgroundElements.push(newElement);
-    }
-  }
-
-  drawBackgroundElements(alpha, zoomFactor = 1.0, finaleElapsedTime = -1, isShaking = false) {
-    const isFinale = finaleElapsedTime >= 0;
-
-    const now = millis();
-    if (isShaking && now - this.lastShakeTime > this.shakeBeatDuration) {
-      // 비트가 업데이트될 때만 lastShakeTime을 갱신합니다.
-      // 실제 흔들림은 각 요소에서 개별적으로 적용됩니다.
-      this.lastShakeTime = now;
-    }
-
-    this.backgroundElements.forEach(el => {
-      let x = el.x;
-      let y = el.y;
-      if (isShaking) {
-        el.currentShakeOffsetX = lerp(el.currentShakeOffsetX, el.targetShakeOffsetX, 0.1);
-        el.currentShakeOffsetY = lerp(el.currentShakeOffsetY, el.targetShakeOffsetY, 0.1);
-        x += el.currentShakeOffsetX;
-        y += el.currentShakeOffsetY;
-      }
-
-      if (isFinale) {
-        const moveProgress = finaleElapsedTime / this.FINALE_DURATION;
-        x += el.finale_dx * moveProgress;
-        y += el.finale_dy * moveProgress;
-      }
-
-      const size = 1.0 * zoomFactor;
-      if (el.type === 'note') {
-        if (el.subType === 'eighth' || el.subType === 'sixteenth') {
-          this['draw' + el.subType.charAt(0).toUpperCase() + el.subType.slice(1) + 'Note'](x, y, 53, alpha, size);
-        } else if (el.subType === 'whole') {
-          this.wholeNote(x, y, el.barChance, el.dotChance, alpha, size);
-        } else {
-          this[el.subType + 'Note'](x, y, el.isRotated, el.barChance, el.dotChance, alpha, size);
-        }
-      } else if (el.type === 'rest') {
-        this['draw' + el.subType.charAt(0).toUpperCase() + el.subType.slice(1) + 'Rest'](x, y, 30, alpha, size);
-      } else if (el.type === 'clef') {
-        this['draw' + el.subType.charAt(0).toUpperCase() + el.subType.slice(1) + 'Clef'](x, y, 50, alpha, size);
-      } else if (el.type === 'beam') {
-        el.beamNote.display(x, y, alpha, size, this.note_height);
-      } else if (el.type === 'symbol') {
-        this['draw' + el.subType.charAt(0).toUpperCase() + el.subType.slice(1).toLowerCase()](x, y, 30, alpha, size);
-      }
-    });
-  }
-
-  drawScoreElements(data, finaleElapsedTime, finaleAlpha, sizeMultiplier, staffOnly = false, isShaking = false) {
-    const isFinale = finaleElapsedTime >= 0;
-
-    // 오선 그리기
-    // 77초 피날레 중에도 오선지는 투명해지지 않도록 항상 alpha 255로 그림
-    const allStaffYPositions = [];
-    for (let j = 0; j < this.staff_num; j++) {
-      allStaffYPositions.push(100 + j * this.note_height * 25);
-      allStaffYPositions.push(100 + this.note_height * 10 + j * this.note_height * 25);
-    }
-    allStaffYPositions.forEach(yPos => this.drawStaff(yPos, 255));
-
-    // 세로선 그리기
-    // 77초 피날레 중에도 세로선은 투명해지지 않도록 항상 alpha 255로 그림
-    strokeWeight(4);
-    stroke(0, 255);
-    let startX = 50;
-    let endX = width - 50;
-    for (let j = 0; j < this.staff_num; j++) {
-      let y1_top = 100 + j * this.note_height * 25 - 2 * this.note_height;
-      let y2_bottom = 100 + this.note_height * 10 + j * this.note_height * 25 + 2 * this.note_height;
-      line(startX, y1_top, startX, y2_bottom);
-      line(endX, y1_top, endX, y2_bottom);
-    }
-
-    // 오선지만 그리는 경우 여기서 함수를 종료합니다.
-    if (staffOnly) return;
-
-    // 악보 요소 그리기
-    const now = millis();
-    if (isShaking && now - this.lastShakeTime > this.shakeBeatDuration) {
-      // 메인 악보와 배경 악보의 흔들림을 동기화하기 위해
-      // drawBackgroundElements에서 이미 this.lastShakeTime이 업데이트되었을 것입니다.
-      // 여기서는 별도 업데이트를 하지 않습니다.
-    }
-
-    const drawElement = (element, drawFunc) => {
-      let x = element.x;
-      let y = element.y;
-      if (isFinale) {
-        const moveProgress = finaleElapsedTime / 1000;
-        x += element.finale_dx * moveProgress;
-        y += element.finale_dy * moveProgress;
-      } else if (isShaking) {
-        element.currentShakeOffsetX = lerp(element.currentShakeOffsetX, element.targetShakeOffsetX, 0.1);
-        element.currentShakeOffsetY = lerp(element.currentShakeOffsetY, element.targetShakeOffsetY, 0.1);
-        x += element.currentShakeOffsetX;
-        y += element.currentShakeOffsetY;
-      }
-      drawFunc(x, y);
-    };
-
-    data.savedNotes.forEach(note => drawElement(note, (x, y) => {
-      switch (note.type) {
-        case 'whole': this.wholeNote(x, y, note.barChance, note.dotChance, finaleAlpha, sizeMultiplier); break;
-        case 'half': this.halfNote(x, y, note.isRotated, note.barChance, note.dotChance, finaleAlpha, sizeMultiplier); break;
-        case 'quarter': this.quarterNote(x, y, note.isRotated, note.barChance, note.dotChance, finaleAlpha, sizeMultiplier); break;
-        case 'eighth': this.drawEighthNote(x, y, 53, finaleAlpha, sizeMultiplier); break;
-        case 'sixteenth': this.drawSixteenthNote(x, y, 53, finaleAlpha, sizeMultiplier); break;
-      }
-    }));
-
-    data.savedBeamNotes.forEach(beamData => drawElement(beamData, (x, y) => {
-      if (beamData.isRotated) { push(); translate(x, y); rotate(PI); beamData.beamNote.display(0, 0, finaleAlpha, sizeMultiplier, this.note_height); pop(); }
-      else { beamData.beamNote.display(x, y, finaleAlpha, sizeMultiplier, this.note_height); }
-    }));
-
-    data.savedRests.forEach(rest => drawElement(rest, (x, y) => {
-      this['draw' + rest.type.charAt(0).toUpperCase() + rest.type.slice(1) + 'Rest'](x, y, 30, finaleAlpha, sizeMultiplier);
-    }));
-
-    data.savedTimeSignatures.forEach(timeSig => drawElement(timeSig, (x, y) => {
-      this['drawTimeSignature' + timeSig.type](x, y, 30, finaleAlpha, sizeMultiplier);
-    }));
-
-    data.savedClefs.forEach(clef => drawElement(clef, (x, y) => {
-      this['draw' + clef.type.charAt(0).toUpperCase() + clef.type.slice(1) + 'Clef'](x, y, 30, finaleAlpha, sizeMultiplier);
-    }));
-
-    data.savedSymbols.forEach(symbol => drawElement(symbol, (x, y) => {
-      this['draw' + symbol.type.charAt(0).toUpperCase() + symbol.type.slice(1).toLowerCase()](x, y, 30, finaleAlpha, sizeMultiplier);
-    }));
-  }
-
-  generateElementsForAllScreen() {
-    this.savedNotes = []; this.savedBeamNotes = []; this.savedRests = [];
-    this.savedTimeSignatures = []; this.savedClefs = [];
-
-    for (let i = 0; i < this.finale_note_density; i++) {
-      this.savedNotes.push({ type: 'whole', x: random(width), y: random(height), barChance: random(), dotChance: random() });
-      this.savedNotes.push({ type: 'half', x: random(width), y: random(height), isRotated: random() < 0.5, barChance: random(), dotChance: random() });
-      this.savedNotes.push({ type: 'quarter', x: random(width), y: random(height), isRotated: random() < 0.5, barChance: random(), dotChance: random() });
-
-      let beamNote = new BeamNote(0, 0, this.note_height);
-      this.savedBeamNotes.push({ beamNote: beamNote, x: random(width), y: random(height), isRotated: random() >= 0.5 });
-
-      this.savedRests.push({ type: 'whole', x: random(width), y: random(height) });
-      this.savedRests.push({ type: 'half', x: random(width), y: random(height) });
-      this.savedRests.push({ type: 'quarter', x: random(width), y: random(height) });
-      this.savedRests.push({ type: 'eighth', x: random(width), y: random(height) });
-      this.savedRests.push({ type: 'sixteenth', x: random(width), y: random(height) });
-
-      this.savedTimeSignatures.push({ type: '44', x: random(width), y: random(height) });
-      this.savedTimeSignatures.push({ type: '68', x: random(width), y: random(height) });
-
-      this.savedNotes.push({ type: 'eighth', x: random(width), y: random(height) });
-      this.savedNotes.push({ type: 'sixteenth', x: random(width), y: random(height) });
-    }
-
-    for (let i = 0; i < 5; i++) {
-      this.savedClefs.push({ type: 'treble', x: 63, y: random(height) });
-      this.savedClefs.push({ type: 'bass', x: 63, y: random(height) });
-    }
-  }
-
-  wholeNote(x, y, barChance, dotChance, alpha = 255, sizeMultiplier = 1.0) {
-    this.drawNoteWithBravura(this.BRAVURA_SYMBOLS.WHOLE_NOTE, x, y, 53, alpha, sizeMultiplier);
-  }
-  halfNote(x, y, isRotated, barChance, dotChance, alpha = 255, sizeMultiplier = 1.0) {
-    this.drawNoteWithBravura(this.BRAVURA_SYMBOLS.HALF_NOTE, x, y, 53, alpha, sizeMultiplier);
-  }
-  quarterNote(x, y, isRotated, barChance, dotChance, alpha = 255, sizeMultiplier = 1.0) {
-    this.drawNoteWithBravura(this.BRAVURA_SYMBOLS.QUARTER_NOTE, x, y, 53, alpha, sizeMultiplier);
-  }
-
-  // Bravura 폰트로 음표를 그리는 헬퍼 함수
-  drawNoteWithBravura(symbol, x, y, size = 53, alpha = 255, sizeMultiplier = 1.0) {
-    if (this.bravuraFont) {
-      textFont(this.bravuraFont);
-    }
-    textAlign(CENTER, CENTER);
-    textSize(size * sizeMultiplier);
-    noStroke();
-    fill(0, alpha);
-    text(symbol, x, y);
-  }
-
-  drawStaff(y, alpha = 255) { stroke(0, alpha); strokeWeight(1); let startX = 50; let endX = width - 50; let lineSpacing = this.note_height; for (let i = 0; i < 5; i++) { let y1 = y - (2 * lineSpacing) + (i * lineSpacing); line(startX, y1, endX, y1); } }
-  drawTrebleClef(x, y, size = 50, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.TREBLE_CLEF, x, y); }
-  drawBassClef(x, y, size = 50, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.BASS_CLEF, x, y); }
-  drawWholeRest(x, y, size = 20, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.WHOLE_REST, x, y); }
-  drawHalfRest(x, y, size = 20, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.HALF_REST, x, y); }
-  drawQuarterRest(x, y, size = 20, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.QUARTER_REST, x, y); }
-  drawEighthRest(x, y, size = 20, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.EIGHTH_REST, x, y); }
-  drawSixteenthRest(x, y, size = 20, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.SIXTEENTH_REST, x, y); }
-  drawTimeSignature44(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.TIME_4_4, x, y); }
-  drawTimeSignature68(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.TIME_6_8, x, y); }
-  // --- 새로 추가된 심볼을 그리는 함수들 ---
-  drawFlat(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.FLAT, x, y); }
-  drawSharp(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.SHARP, x, y); }
-  drawNatural(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.NATURAL, x, y); }
-  drawFermata(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.FERMATA, x, y); }
-  drawAccent(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.ACCENT, x, y); }
-  drawStaccato(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.STACCATO, x, y); }
-  drawTenuto(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.TENUTO, x, y); }
-  drawTrill(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.TRILL, x, y); }
-  drawMordent(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.MORDENT, x, y); }
-  drawTurn(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.TURN, x, y); }
-  drawCrescendo(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.CRESCENDO, x, y); }
-  drawDecrescendo(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.DECRESCENDO, x, y); }
-  drawPedal_mark(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.PEDAL_MARK, x, y); }
-  drawDouble_barline(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.DOUBLE_BARLINE, x, y); }
-  drawSfz(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.SFZ, x, y); }
-  drawArpeggio(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.ARPEGGIO, x, y); }
-  drawSegno(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.SEGNO, x, y); }
-  drawTime_c(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.TIME_C, x, y); }
-  drawEighthNote(x, y, size = 20, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.EIGHTH_NOTE, x, y); }
-  drawSixteenthNote(x, y, size = 20, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.SIXTEENTH_NOTE, x, y); }
-  // --- randomScores.js 함수 끝 ---
-
   keyPressed() {
     // 스페이스바를 누르면 음악을 재생하거나 정지합니다.
     if (key === ' ') {
@@ -1166,6 +646,14 @@ our joy and suffering,
       // '6' 키를 누르면 씬2 전체에서 색상 반전 효과 활성화
       this.isInverting = true;
       this.inversionStartTime = millis();
+    } else if (keyCode === LEFT_ARROW) {
+      this.shiftDirection = 'LEFT';
+    } else if (keyCode === RIGHT_ARROW) {
+      this.shiftDirection = 'RIGHT';
+    } else if (keyCode === UP_ARROW) {
+      this.shiftDirection = 'UP';
+    } else if (keyCode === DOWN_ARROW) {
+      this.shiftDirection = 'DOWN';
     }
   }
 
