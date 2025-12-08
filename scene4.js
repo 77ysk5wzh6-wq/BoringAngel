@@ -68,7 +68,7 @@ class Scene4 {
     this.baseJumpProbability = 0.01; // 5%
 
     this.lastHighlightColorChangeTime = 0; // 하이라이트 색상 변경 마지막 시간
-    this.highlightColorChangeInterval = 200; // 0.1초마다 색상 변경
+    this.highlightColorChangeInterval = 300; // 0.1초마다 색상 변경
 
     // --- '7' 키 하이라이트 색상 순환 관련 변수 ---
     this.highlightColorCycle = [
