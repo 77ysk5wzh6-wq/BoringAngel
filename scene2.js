@@ -94,9 +94,6 @@ class Scene2 {
     // --- 배경 플래시 효과 변수 ---
     this.backgroundFlashTime = 0;
 
-    // --- 색상 반전 효과 변수 ---
-    this.isInverting = false;
-    this.inversionStartTime = 0;
   }
 
   setup() {
@@ -115,8 +112,6 @@ class Scene2 {
     this.isStopped = false;
     this.isFlashing = false;
     this.flashRectangles = [];
-    this.isInverting = false;
-    this.inversionStartTime = 0;
     this.initializeGrid();
   }
 
@@ -224,14 +219,6 @@ class Scene2 {
           this.flashRectangles = [];
         }
         pop();
-      }
-    }
-
-    if (this.isInverting) {
-      if (millis() - this.inversionStartTime < 100) {
-        filter(INVERT);
-      } else {
-        this.isInverting = false;
       }
     }
   }
@@ -713,8 +700,12 @@ class Scene2 {
         }
       }
     } else if (key === '7') {
-      this.isInverting = true;
-      this.inversionStartTime = millis();
+      // body에 CSS 클래스를 추가하여 필터 효과를 적용합니다.
+      document.body.classList.add('scene2-filter-active');
+      // 100ms 후에 클래스를 제거하여 효과를 해제합니다.
+      setTimeout(() => {
+        document.body.classList.remove('scene2-filter-active');
+      }, 100);
     }
   }
 }

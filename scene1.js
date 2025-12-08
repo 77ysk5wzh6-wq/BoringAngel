@@ -712,10 +712,10 @@ class Scene1 {
       push();
       textAlign(CENTER, CENTER);
 
-      let title1 = "Boring";
-      let title2 = "Angel";
+      let title1 = "Synthetic";
+      let title2 = "Sublime";
       let padding = 10;
-      let initialSize = 400;
+      let initialSize = 350;
       let baseSize = initialSize;
       let textW = textWidth(title1);
       if (textW > width - padding) {
@@ -745,12 +745,12 @@ class Scene1 {
       // 애니메이션 중이 아닐 때만 깜빡임 효과 적용
       if (this.titleAnimationState === 'idle') {
         if (floor(millis() / 500) % 2 === 0) {
-          text(title1, width / 2, height / 2 - currentSize / 2);
-          text(title2, width / 2, height / 2 + currentSize / 2);
+          text(title1, width / 2, height / 2 - currentSize / 1.5);
+          text(title2, width / 2, height / 2 + currentSize / 1.5);
         }
       } else { // 애니메이션 중에는 항상 표시
-        text(title1, width / 2, height / 2 - currentSize / 2);
-        text(title2, width / 2, height / 2 + currentSize / 2);
+        text(title1, width / 2, height / 2 - currentSize / 1.5);
+        text(title2, width / 2, height / 2 + currentSize / 1.5);
       }
 
       pop();

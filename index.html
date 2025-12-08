@@ -18,6 +18,31 @@
     }
     /* p5.js가 캔버스를 main 태그 안에 생성하므로, main 태그에 대한 스타일은 필요 없습니다. */
     
+    /* Scene 2에서 필터 효과가 활성화될 때 적용될 CSS */
+    body.scene2-filter-active canvas {
+      animation: glitch 0.1s infinite;
+    }
+    
+    @keyframes glitch {
+      0% {
+        transform: translate(0);
+      }
+      20% {
+        transform: translate(-2px, 2px);
+      }
+      40% {
+        transform: translate(-2px, -2px);
+      }
+      60% {
+        transform: translate(2px, 2px);
+      }
+      80% {
+        transform: translate(2px, -2px);
+      }
+      100% {
+        transform: translate(0);
+      }
+    }
     
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.js"></script>

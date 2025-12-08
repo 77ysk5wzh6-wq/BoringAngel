@@ -84,7 +84,7 @@ class Scene4 {
   
 
   // --- 하이라이트 및 점프 확률 계산을 위한 상수 ---
-  static get HIGHLIGHT_FADE_START_TIME() { return 166; } // 2분 50초
+  static get HIGHLIGHT_FADE_START_TIME() { return 168; } // 2분 50초
   static get HIGHLIGHT_FADE_DURATION() { return 9; }     // 4초
   static get HIGHLIGHT_BASE_PROBABILITY() { return 0.3; }
   static get JUMP_BASE_PROBABILITY() { return 0.005; }
@@ -153,7 +153,10 @@ class Scene4 {
     // 이 씬의 모든 그리기 작업을 push/pop으로 감싸서
     // 외부(다른 씬 또는 sketch.js)에 영향을 주지 않도록 격리합니다.
     push();
-    background(255);
+    // shrinking 상태에서는 잔상 효과를 위해 배경을 그리지 않습니다.
+    if (this.transitionState !== 'shrinking') {
+      background(255);
+    }
 
     const currentTime = this.song.isPlaying() ? this.song.currentTime() : 0;
     const now = millis();
@@ -290,7 +293,7 @@ class Scene4 {
     const currentCellHeight = currentGridHeight / this.initialRows;
     const currentTextSize = min(currentCellWidth, currentCellHeight);
 
-    background(255);
+    background(255, 180);
     textAlign(CENTER, CENTER);
     textSize(currentTextSize);
     fill(0, 0, 255); // Scene2와 동일하게 파란색
