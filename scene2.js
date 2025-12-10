@@ -157,13 +157,20 @@ class Scene2 {
 
     for (const element of allElements) {
       element.finale_dx = random(0);
-      element.finale_dy = random(-30, 5000);
+      element.finale_dy = random(-5000, 30);
     }
 
     for (const element of this.backgroundElements) {
       element.finale_dx = random(0);
-      element.finale_dy = random(-30, 5000);
+      element.finale_dy = random(-5000, 30);
     }
+
+    // 피날레가 시작될 때 필터 효과를 트리거합니다.
+    document.body.classList.add('scene2-filter-active');
+    // 100ms 후에 클래스를 제거하여 효과를 해제합니다.
+    setTimeout(() => {
+      document.body.classList.remove('scene2-filter-active');
+    }, 100);
   }
 
   draw() {
@@ -525,10 +532,10 @@ class Scene2 {
         // 첫 80ms 동안 y축으로 -50px 이동
         if (finaleElapsedTime < 80) {
           const progress = finaleElapsedTime / 80;
-          y -= 500 * progress; // 80ms에 걸쳐 -50px까지 이동
+          y += 400 * progress; // 80ms에 걸쳐 -50px까지 이동
         } else {
           // 80ms 이후: -50px 위치에서부터 기존 finale 애니메이션 시작
-          y -= 500; // -50px 위치 고정
+          y += 400; // -50px 위치 고정
           // 남은 시간 동안 finale 애니메이션 진행
           const remainingDuration = this.FINALE_DURATION - 80;
           const moveProgress = (finaleElapsedTime - 80) / remainingDuration;
@@ -588,10 +595,10 @@ class Scene2 {
         // 첫 80ms 동안 y축으로 -50px 이동
         if (finaleElapsedTime < 80) {
           const progress = finaleElapsedTime / 80;
-          y -= 500 * progress; // 80ms에 걸쳐 -50px까지 이동
+          y += 400 * progress; // 80ms에 걸쳐 -50px까지 이동
         } else {
           // 80ms 이후: -50px 위치에서부터 기존 finale 애니메이션 시작
-          y -= 500; // -50px 위치 고정
+          y += 400; // -50px 위치 고정
           const moveProgress = (finaleElapsedTime - 80) / (this.FINALE_DURATION - 80);
           x += element.finale_dx * moveProgress;
           y += element.finale_dy * moveProgress;
@@ -720,13 +727,6 @@ class Scene2 {
           });
         }
       }
-    } else if (key === '7') {
-      // body에 CSS 클래스를 추가하여 필터 효과를 적용합니다.
-      document.body.classList.add('scene2-filter-active');
-      // 100ms 후에 클래스를 제거하여 효과를 해제합니다.
-      setTimeout(() => {
-        document.body.classList.remove('scene2-filter-active');
-      }, 100);
     }
   }
 }
