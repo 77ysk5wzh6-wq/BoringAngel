@@ -20,6 +20,13 @@ class Scene4 {
       'Ballet'
     ];
 
+    // --- Expansion 애니메이션을 위한 추가 문자셋 ---
+    this.japaneseChars = "あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわをん".split('');
+    this.chineseChars = "的一是在不了有和人這中大為上個國我以要他時來用們生到作地於出就分對成会可主".split('');
+    // Music 문자셋은 languageSets 에서 가져옵니다.
+    this.musicChars = ['◌', '𝅝', '𝀓', '𝀄', '♩', '♪', '𝁉', '♫', '♬', '♯', '𝄢', '𝇚', '𝅘𝅥𝅲', '𝄡', '𝄞', '𝄇'];
+    this.koreanChars = "안녕하세요감사합니다사랑해요잘지냈나요".split('');
+
     this.song = song;
     this.video = null; // 비디오 엘리먼트
     this.fft = null; // FFT 분석 객체
@@ -40,7 +47,7 @@ class Scene4 {
       {
         name: 'Chinese',
         font: 'Noto Sans TC',
-        glyphs: "･ . , : ; ° ' ` 之 乃 久 小 川 心 光 花 面 重 舞 龍 夢 難 鱗".split(' ')
+        glyphs: "･ . , : ; ° ' ` 之 乃 久 小 川 心 光 花 面 重 舞 龍 夢 難 ".split(' ')
       },
       {
         name: 'Arabic',
@@ -51,8 +58,14 @@ class Scene4 {
       {
         name: 'Korean',
         font: 'sans-serif', // 기본 산세리프 폰트 사용
-        glyphs: "· . , ; : ㄴ ㄱ ㄷ ㄹ ㅎ 아 가 나 파 화 당 랑 날 홉 칼 말 날 랄 활".split(' ')
-      }
+        glyphs: "· . , ; : ㄴ ㄱ ㄷ ㄹ ㅎ 아 가 나 파 화 활".split(' ')
+      },
+      {
+        name: 'Music',
+        font: 'Noto Music',
+        // 시각적 밀도가 낮은 문자(밝은 영역)부터 높은 문자(어두운 영역) 순으로 정렬합니다.
+        glyphs: ['◌', '𝅝', '𝀓', '𝀄', '♩', '♪', '𝁉', '♫', '♬', '♯', '𝄢', '𝇚', '𝅘𝅥𝅲', '𝄡', '𝄞', '𝄇']
+      },
     ];
     this.currentAsciiSetIndex = 0; // 현재 사용 중인 문자셋 인덱스
 
@@ -60,8 +73,12 @@ class Scene4 {
     this.initialCols = 37;
     this.initialRows = 20;
 
-    this.finalCols = 112;
-    this.finalRows = 64;
+    // this.finalCols = 112;
+    // this.finalRows = 64;
+
+
+    this.finalCols = 90;
+    this.finalRows = 51;
 
     this.cols = 0;
     this.rows = 0;
@@ -93,6 +110,7 @@ class Scene4 {
     this.currentScale = 1; // 줌 효과는 사용하지 않으므로 1로 고정
     this.targetScale = 1;
     this.isReady = false; // 에셋 로딩 및 파싱 완료 여부
+    this.firstFramePixels = null; // 비디오의 첫 프레임을 저장할 변수
 
     // --- '6' 키 임팩트 효과 변수 ---
     this.impactActive = false;
@@ -153,7 +171,14 @@ class Scene4 {
   preload() {
     // 폰트는 외부에서 전달받으므로, 이 씬에서는 preload할 것이 없습니다.
     // 비디오 에셋을 preload에서 로드하여 setup 이전에 로딩을 보장합니다.
-    this.video = createVideo(['assets/footage2.mp4']);
+    this.video = createVideo(['assets/footage2.mp4'], () => {
+      // 비디오가 로드되면, 첫 프레임을 캡처합니다.
+      this.video.loadPixels();
+      if (this.video.pixels.length > 0) {
+        this.firstFramePixels = new Uint8ClampedArray(this.video.pixels);
+        console.log("Scene4: Video first frame captured successfully.");
+      }
+    });
   }
 
 
@@ -512,10 +537,26 @@ class Scene4 {
           cell.highlightStartTime = 0;
         }
 
-        if (progress > 0 && random() > 0.988) {
+        if (progress > 0 && random() > 0.98) { // 확률을 약간 높여 더 많은 문자가 나타나도록 조정
           // 초기 30x18 영역 밖의 셀에만 무작위 문자를 채웁니다.
-          cell.char = random(this.randomChars.split(''));
-          cell.font = random(this.fonts); // 씬3의 폰트 리스트에서 랜덤하게 선택
+          const fontTypeRoll = random(1);
+          if (fontTypeRoll < 0.6) { // 60% 확률로 기존 라틴 폰트
+            cell.char = random(this.randomChars.split(''));
+            cell.font = random(this.fonts);
+          } else if (fontTypeRoll < 0.7) { // 10% 확률로 일본어
+            cell.char = random(this.japaneseChars);
+            cell.font = 'Shippori Mincho';
+          } else if (fontTypeRoll < 0.8) { // 10% 확률로 중국어
+            cell.char = random(this.chineseChars);
+            cell.font = 'Noto Sans TC';
+          } else if (fontTypeRoll < 0.9) { // 10% 확률로 음악 기호
+            cell.char = random(this.musicChars);
+            cell.font = 'Noto Music';
+          } else { // 10% 확률로 한글
+            cell.char = random(this.koreanChars);
+            cell.font = 'Noto Sans KR';
+          }
+
           // 문자가 변경되는 순간 하이라이트 트리거
           if (random() < highlightProbability) {
             cell.highlightStartTime = now;
@@ -565,19 +606,24 @@ class Scene4 {
   }
 
   prepareMorphTarget() {
-    this.video.loadPixels();
-    if (this.video.pixels.length > 0) { const now = millis();
+    // 사용할 픽셀 데이터를 결정합니다. 첫 프레임 데이터가 있으면 사용하고, 없으면 실시간 비디오 데이터를 사용합니다.
+    const pixelsToUse = this.firstFramePixels || (this.video.loadPixels(), this.video.pixels);
+
+    if (pixelsToUse && pixelsToUse.length > 0) {
+      const now = millis();
       const highlightProbability = this.getDynamicProbability(Scene4.HIGHLIGHT_BASE_PROBABILITY);
 
       for (let i = 0; i < this.gridData.length; i++) {
         const col = i % this.finalCols;
         const row = floor(i / this.finalCols);
-        const videoX = floor(map(col + 0.5, 0, this.finalCols, 0, this.video.width));
-        const videoY = floor(map(row + 0.5, 0, this.finalRows, 0, this.video.height));
-        const idx = (videoY * this.video.width + videoX) * 4;
-        const r = this.video.pixels[idx];
-        const g = this.video.pixels[idx + 1];
-        const b = this.video.pixels[idx + 2];
+        const videoWidth = this.video.width;
+        const videoHeight = this.video.height;
+        const videoX = floor(map(col + 0.5, 0, this.finalCols, 0, videoWidth));
+        const videoY = floor(map(row + 0.5, 0, this.finalRows, 0, videoHeight));
+        const idx = (videoY * videoWidth + videoX) * 4;
+        const r = pixelsToUse[idx];
+        const g = pixelsToUse[idx + 1];
+        const b = pixelsToUse[idx + 2];
         const brightness = (r + g + b) / 3;
 
         const cell = this.gridData[i];
@@ -601,6 +647,10 @@ class Scene4 {
         }
 
         this.gridData[i].color = color(0); // 최종 색상은 검정
+      }
+      // 첫 프레임 데이터를 사용했다면, 다음 prepareMorphTarget 호출부터는 실시간 비디오를 사용하도록 null로 설정합니다.
+      if (this.firstFramePixels) {
+        this.firstFramePixels = null;
       }
     }
   }
@@ -677,13 +727,16 @@ class Scene4 {
 
   drawAsciiArt() {
     // 먼저 비디오의 현재 프레임을 기반으로 목표 문자를 업데이트합니다.
-    const now = millis();
 
     // --- '8' 키 사각형 모드 처리 ---
     if (this.isRectModeActive) {
       // 사각형 모드 그리기 로직
       this.video.loadPixels();
       if (this.video.pixels.length > 0) {
+        const videoPixels = this.video.pixels;
+        const videoWidth = this.video.width;
+        const videoHeight = this.video.height;
+
         background(255);
         const effectCols = this.finalCols / 2;
         const effectRows = this.finalRows / 2;
@@ -696,10 +749,10 @@ class Scene4 {
 
         for (let r = 0; r < effectRows; r++) {
           for (let c = 0; c < effectCols; c++) {
-            const videoX = floor(map(c + 0.5, 0, effectCols, 0, this.video.width));
-            const videoY = floor(map(r + 0.5, 0, effectRows, 0, this.video.height));
-            const idx = (videoY * this.video.width + videoX) * 4;
-            const brightness = (this.video.pixels[idx] + this.video.pixels[idx + 1] + this.video.pixels[idx + 2]) / 3;
+            const videoX = floor(map(c + 0.5, 0, effectCols, 0, videoWidth));
+            const videoY = floor(map(r + 0.5, 0, effectRows, 0, videoHeight));
+            const idx = (videoY * videoWidth + videoX) * 4;
+            const brightness = (videoPixels[idx] + videoPixels[idx + 1] + videoPixels[idx + 2]) / 3;
 
             const rectHeight = map(brightness, 0, 255, effectCellSize, 0);
             const x = offsetX + c * effectCellSize + effectCellSize / 2;
@@ -718,6 +771,10 @@ class Scene4 {
       // 원 모드 그리기 로직
       this.video.loadPixels();
       if (this.video.pixels.length > 0) {
+        const videoPixels = this.video.pixels;
+        const videoWidth = this.video.width;
+        const videoHeight = this.video.height;
+
         background(255);
         const effectCols = this.finalCols / 2;
         const effectRows = this.finalRows / 2;
@@ -728,10 +785,10 @@ class Scene4 {
         noStroke();
         for (let r = 0; r < effectRows; r++) {
           for (let c = 0; c < effectCols; c++) {
-            const videoX = floor(map(c + 0.5, 0, effectCols, 0, this.video.width));
-            const videoY = floor(map(r + 0.5, 0, effectRows, 0, this.video.height));
-            const idx = (videoY * this.video.width + videoX) * 4;
-            const brightness = (this.video.pixels[idx] + this.video.pixels[idx + 1] + this.video.pixels[idx + 2]) / 3;
+            const videoX = floor(map(c + 0.5, 0, effectCols, 0, videoWidth));
+            const videoY = floor(map(r + 0.5, 0, effectRows, 0, videoHeight));
+            const idx = (videoY * videoWidth + videoX) * 4;
+            const brightness = (videoPixels[idx] + videoPixels[idx + 1] + videoPixels[idx + 2]) / 3;
             const circleDiameter = map(brightness, 0, 255, effectCellSize, 0);
             const x = offsetX + c * effectCellSize + effectCellSize / 2;
             const y = offsetY + r * effectCellSize + effectCellSize / 2;
@@ -754,10 +811,11 @@ class Scene4 {
       return; // 원 모드일 때는 아래의 일반 그리기 로직을 건너뜁니다.
     }
 
-
+    this.video.loadPixels(); // 실시간 아스키 아트를 위해 매 프레임 픽셀 로드
     this.prepareMorphTarget();
     if (this.video.pixels.length === 0) return;
 
+    const now = millis();
     const songTime = song.currentTime(); // 메인 스케치의 전역 song 변수 참조
 
     // --- 기존 문자 기반 아스키 아트 ---
@@ -795,9 +853,12 @@ class Scene4 {
     textAlign(CENTER, CENTER);
     textSize(this.glyphSize);
     // 개더링이 시작되면 볼드를 해제하고, 그 전까지는 볼드를 유지합니다.
-    if (songTime >= this.GATHER_START_TIME) {
+    const currentSet = this.languageSets[this.currentAsciiSetIndex];
+    if (songTime >= this.GATHER_START_TIME || currentSet.name === 'Music' || currentSet.name === 'Chinese') {
+      // 개더링이 시작되거나, 'Music' 또는 'Chinese' 문자셋일 때는 볼드 처리를 하지 않습니다.
       textStyle(NORMAL);
     } else {
+      // 그 외의 경우에는 볼드 스타일을 적용합니다.
       textStyle(BOLD);
     }
     fill(0);
