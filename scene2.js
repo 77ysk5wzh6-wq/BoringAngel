@@ -103,6 +103,12 @@ class Scene2 {
     this.lastSplitFlashTime = 0; // 마지막 플래시 트리거 시간
     this.splitFlashCooldown = 200; // 플래시 간 최소 간격 (0.2초)
     
+    // --- 마우스 클릭으로 생성된 기호 관련 변수 ---
+    this.clickedSymbols = []; // { x, y, symbol, size, alpha, color, isSoaring, soarStartTime }
+    this.soarDuration = 700; // 솟구치는 애니메이션 지속 시간 (1.5초)
+    this.soarDistance = 800; // 솟구치는 거리
+    this.soarAllTriggered = false; // 80.12초에 모든 기호를 솟구치게 하는 트리거 플래그
+
   }
 
   setup() {
@@ -125,6 +131,8 @@ class Scene2 {
     this.splitFlashes = [];
     this.lastSplitFlashTime = 0;
     this.initializeGrid();
+    this.clickedSymbols = []; // 씬 진입 시 클릭된 기호 배열 초기화
+    this.soarAllTriggered = false; // 씬 진입 시 트리거 플래그 리셋
 
   }
 
@@ -195,6 +203,18 @@ class Scene2 {
       this.fft.analyze();
       const highMidValue = this.fft.getEnergy("highMid");
 
+      // --- 80.12초에 모든 기호 솟구침 트리거 ---
+      if (currentTime >= 80.12 && !this.soarAllTriggered) {
+        const now = millis();
+        this.clickedSymbols.forEach(symbol => {
+          if (!symbol.isSoaring) {
+            symbol.isSoaring = true;
+            symbol.soarStartTime = now;
+          }
+        });
+        this.soarAllTriggered = true; // 한 번만 실행되도록 플래그 설정
+      }
+
 
       // --- highMid 기반 배경 분할 플래시 트리거 ---
       if (currentTime < 80.12) {
@@ -215,6 +235,14 @@ class Scene2 {
             startTime: now + this.splitFlashDuration1,
             duration: this.splitFlashDuration2,
             color: color(random(255), random(255), random(255))
+          });
+
+          // --- 클릭된 기호 솟구침 트리거 ---
+          this.clickedSymbols.forEach(symbol => {
+            if (!symbol.isSoaring) {
+              symbol.isSoaring = true;
+              symbol.soarStartTime = now;
+            }
           });
         }
       }
@@ -287,6 +315,44 @@ class Scene2 {
           this.isFlashing = false;
           this.flashRectangles = [];
         }
+        pop();
+      }
+
+      // --- 클릭으로 생성된 기호 그리기 및 애니메이션 ---
+      if (this.clickedSymbols.length > 0) {
+        const now = millis();
+        push();
+        textFont(this.bravuraFont);
+        textAlign(CENTER, CENTER);
+
+        // 사라진 기호들을 배열에서 제거합니다.
+        this.clickedSymbols = this.clickedSymbols.filter(symbol => {
+          if (symbol.isSoaring) {
+            return now - symbol.soarStartTime < this.soarDuration;
+          }
+          return true; // 아직 솟구치지 않은 기호는 유지
+        });
+
+        this.clickedSymbols.forEach(symbol => {
+          let currentY = symbol.y;
+          let currentAlpha = symbol.alpha;
+
+          if (symbol.isSoaring) {
+            const elapsed = now - symbol.soarStartTime;
+            const progress = constrain(elapsed / this.soarDuration, 0, 1);
+            const easedProgress = 1 - pow(1 - progress, 3); // Ease-Out Cubic
+
+            // y좌표는 위로, 알파는 0으로
+            currentY = lerp(symbol.y, symbol.y - this.soarDistance, easedProgress);
+            currentAlpha = lerp(255, 0, progress);
+          }
+
+          // 저장된 랜덤 색상에 계산된 투명도를 적용합니다.
+          symbol.color.setAlpha(currentAlpha);
+          fill(symbol.color);
+          textSize(symbol.size);
+          text(symbol.symbol, symbol.x, currentY);
+        });
         pop();
       }
     }
@@ -770,24 +836,45 @@ class Scene2 {
         }
         this.song.play();
       }
-    } else if (key === '6') {
-      const currentTime = this.song.currentTime();
-      if (currentTime >= this.flashTriggerTime && !this.isFlashing) {
-        this.isFlashing = true;
-        this.flashStartTime = millis();
+    } else if (key === '6') { // '6' 키는 80.12초 이후부터 아무 동작도 하지 않습니다.
+      // 요청에 따라 '6' 키를 눌러도 아무 일도 일어나지 않도록 합니다.
+    }
+  }
 
-        this.flashRectangles = [];
-        const numRects = random(2, 190);
-        for (let i = 0; i < numRects; i++) {
-          const initialWidth = random(0.01, 1);
-          const x = random(width);
+  mousePressed() {
+    // BRAVURA_SYMBOLS 객체의 값들만 추출하여 배열로 만듭니다.
+    const symbolsArray = Object.values(this.BRAVURA_SYMBOLS);
+    // 랜덤 기호 선택
+    const currentTime = this.song.currentTime();
 
-          this.flashRectangles.push({
-            x: x,
-            initialWidth: initialWidth,
-            startTime: millis(),
-          });
-        }
+    if (currentTime >= 80.12) {
+      // 80.12초부터는 마우스 클릭 시 '6' 키 애니메이션 발생
+      this.triggerFlashRectangles();
+    } else {
+      // 80.12초 이전에는 기존의 음악 기호 생성 로직 유지
+      const randomSymbol = random(symbolsArray);
+      this.clickedSymbols.push({
+        x: mouseX,
+        y: mouseY,
+        symbol: randomSymbol,
+        size: 100,
+        alpha: 255,
+        color: color(random(255), random(255), random(255)), // 랜덤 색상 추가
+        isSoaring: false,
+        soarStartTime: 0
+      });
+    }
+  }
+
+  // '6' 키를 눌렀을 때 발생하던 플래시 애니메이션 로직을 별도 함수로 분리
+  triggerFlashRectangles() {
+    if (!this.isFlashing) { // 이미 플래시 중이 아닐 때만 트리거
+      this.isFlashing = true;
+      this.flashStartTime = millis();
+      this.flashRectangles = [];
+      const numRects = random(2, 190);
+      for (let i = 0; i < numRects; i++) {
+        this.flashRectangles.push({ x: random(width), initialWidth: random(0.01, 1), startTime: millis() });
       }
     }
   }

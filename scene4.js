@@ -145,13 +145,6 @@ class Scene4 {
     ];
     this.highlightColorIndex = 0;
     
-    // --- Arrow Key Sweep Animation ---
-    this.arrowSweepActive = false;
-    this.arrowSweepDirection = null;
-    this.arrowSweepStartTime = 0;
-    this.arrowSweepDuration = 400; // 0.3초
-    this.arrowSweepColor = color(255, 255, 0, 150); // 반투명 노란색
-
     // --- 글리치 효과 변수 ---
     this.lastMidValue = 0;
     this.midThreshold = 172;
@@ -361,9 +354,6 @@ class Scene4 {
     } else if (this.transitionState === 'playing') {
       this.drawAsciiArt();
     }
-
-    // --- 화살표 키 쓸기 애니메이션 그리기 ---
-    this.drawArrowSweep();
 
     pop(); // push에 대한 pop
   }
@@ -1095,24 +1085,6 @@ class Scene4 {
           cell.impactRandomFactor = random(0.5, 1.5); // 50% ~ 150% 사이의 랜덤한 이동 비율
         }
       }
-    } else if (!this.arrowSweepActive) { // 다른 쓸기 애니메이션이 진행 중이 아닐 때만
-      if (keyCode === RIGHT_ARROW) {
-        this.arrowSweepActive = true;
-        this.arrowSweepDirection = 'RIGHT';
-        this.arrowSweepStartTime = millis();
-      } else if (keyCode === LEFT_ARROW) {
-        this.arrowSweepActive = true;
-        this.arrowSweepDirection = 'LEFT';
-        this.arrowSweepStartTime = millis();
-      } else if (keyCode === UP_ARROW) {
-        this.arrowSweepActive = true;
-        this.arrowSweepDirection = 'UP';
-        this.arrowSweepStartTime = millis();
-      } else if (keyCode === DOWN_ARROW) {
-        this.arrowSweepActive = true;
-        this.arrowSweepDirection = 'DOWN';
-        this.arrowSweepStartTime = millis();
-      }
     }
   }
 
@@ -1123,55 +1095,6 @@ class Scene4 {
     }
     if (key === '9') {
       this.isCircleModeActive = false;
-    }
-  }
-
-  drawArrowSweep() {
-    if (!this.arrowSweepActive) return;
-
-    const elapsedTime = millis() - this.arrowSweepStartTime;
-    const progress = constrain(elapsedTime / this.arrowSweepDuration, 0, 1);
-
-    const offsetX = (width - this.finalCols * this.cellSize) / 2;
-    const offsetY = (height - this.finalRows * this.cellSize) / 2;
-
-    push();
-    noStroke();
-    rectMode(CORNER); // 셀 좌표에 맞춰 왼쪽 상단 기준으로 사각형을 그립니다.
-
-    if (this.arrowSweepDirection === 'RIGHT' || this.arrowSweepDirection === 'LEFT') {
-      // 세로줄 쓸기 (열 단위)
-      const totalCols = this.finalCols;
-      let currentCol;
-      if (this.arrowSweepDirection === 'RIGHT') {
-        currentCol = floor(lerp(0, totalCols, progress));
-      } else { // LEFT
-        currentCol = floor(lerp(totalCols - 1, -1, progress));
-      }
-
-      for (let j = 0; j < this.finalRows; j++) {
-        const x = offsetX + currentCol * this.cellSize;
-        const y = offsetY + j * this.cellSize;
-        fill(this.getHighlightColorForCell(j * totalCols + currentCol, 128));
-        rect(x, y, this.cellSize, this.cellSize);
-      }
-    } else if (this.arrowSweepDirection === 'DOWN' || this.arrowSweepDirection === 'UP') {
-      // 가로줄 쓸기 (행 단위)
-      const totalRows = this.finalRows;
-      let currentRow = (this.arrowSweepDirection === 'DOWN') ? floor(lerp(0, totalRows, progress)) : floor(lerp(totalRows - 1, -1, progress));
-
-      for (let i = 0; i < this.finalCols; i++) {
-        const x = offsetX + i * this.cellSize;
-        const y = offsetY + currentRow * this.cellSize;
-        fill(this.getHighlightColorForCell(currentRow * this.finalCols + i, 128));
-        rect(x, y, this.cellSize, this.cellSize);
-      }
-    }
-
-    pop();
-
-    if (progress >= 1) {
-      this.arrowSweepActive = false; // 애니메이션 종료
     }
   }
 

@@ -125,13 +125,6 @@ class Scene1 {
     this.titleAnimationStartTime = 0;
     this.titleAnimationDuration = 1000; // 1초
     
-    // --- Arrow Key Move Animation ---
-    this.arrowMoveDirection = null;
-    this.arrowMoveStartTime = 0;
-    this.arrowMoveDuration = 60; // 0.1초
-    this.arrowMoveOffsetX = 0;
-    this.arrowMoveOffsetY = 0;
-    
     this.fonts = [
       'Fira Mono',
       'Geom',
@@ -144,6 +137,9 @@ class Scene1 {
     ];
     this.title1Chars = [];
     this.title2Chars = [];
+
+    // --- Clicked Circles ---
+    this.clickCircles = []; // 마우스 클릭으로 생성된 원들을 저장하는 배열
   }
 
   setup() {
@@ -192,12 +188,6 @@ class Scene1 {
     // Title 애니메이션 상태 초기화
     this.titleAnimationState = 'idle';
 
-    // Arrow Key 애니메이션 상태 초기화
-    this.arrowMoveDirection = null;
-    this.arrowMoveStartTime = 0;
-    this.arrowMoveOffsetX = 0;
-    this.arrowMoveOffsetY = 0;
-
     // --- 변수 초기값 설정 ---
     this.initialMinRectW = 50; // 중첩사각형중 제일 작은 것
     this.initialMinRectH = 50; //initialHeight 랑 같게
@@ -230,6 +220,9 @@ class Scene1 {
     // --- 타이틀 문자 배열 초기화 ---
     this.title1Chars = "Boring".split('').map(char => ({ char, font: 'Fira Mono' }));
     this.title2Chars = "Life".split('').map(char => ({ char, font: 'Fira Mono' }));
+
+    // --- 클릭된 원 배열 초기화 ---
+    this.clickCircles = [];
   }
 
   draw() {
@@ -250,27 +243,6 @@ class Scene1 {
     // =================================================
     // 1. 시간 및 상태 업데이트 (음악 재생 중)
     // =================================================
-
-    // --- Arrow Key 애니메이션 업데이트 ---
-    if (this.arrowMoveDirection) {
-      const elapsed = millis() - this.arrowMoveStartTime;
-      if (elapsed < this.arrowMoveDuration) {
-        const progress = elapsed / this.arrowMoveDuration;
-        // sin 함수를 이용해 부드럽게 나갔다가 돌아오는 움직임 (0 -> 1 -> 0)
-        const moveProgress = sin(progress * PI);
-
-        if (this.arrowMoveDirection === 'LEFT') this.arrowMoveOffsetX = - (width / 10) * moveProgress;
-        else if (this.arrowMoveDirection === 'RIGHT') this.arrowMoveOffsetX = (width / 10) * moveProgress;
-        else if (this.arrowMoveDirection === 'UP') this.arrowMoveOffsetY = - (height / 7) * moveProgress;
-        else if (this.arrowMoveDirection === 'DOWN') this.arrowMoveOffsetY = (height / 7) * moveProgress;
-
-      } else {
-        // 애니메이션 종료
-        this.arrowMoveDirection = null;
-        this.arrowMoveOffsetX = 0;
-        this.arrowMoveOffsetY = 0;
-      }
-    }
 
     // --- 마우스 움직임에 따른 타이틀 폰트 변경 ---
     if (dist(pmouseX, pmouseY, mouseX, mouseY) > 1) { // 마우스가 1픽셀 이상 움직였을 때
@@ -672,23 +644,23 @@ class Scene1 {
 
     // 원 1 (중앙 고정)
       if (this.stretchAnimationState === 'idle') {
-        ellipse(this.centerCircle_y + this.arrowMoveOffsetX, currentY + this.arrowMoveOffsetY, this.centerCircleDiameter, this.centerCircleDiameter);
+        ellipse(this.centerCircle_y, currentY, this.centerCircleDiameter, this.centerCircleDiameter);
       } else {
-        rect(width / 2 + this.arrowMoveOffsetX, currentY + this.arrowMoveOffsetY, this.stretchedWidth, this.stretchedHeight);
+        rect(width / 2, currentY, this.stretchedWidth, this.stretchedHeight);
       }
     
       // 원 2 (오른쪽으로 이동) - 스트레치 애니메이션 적용
       if (this.stretchAnimationState === 'idle') {
-        ellipse(width / 2 + this.circleA_x_offset + this.arrowMoveOffsetX, currentY + this.arrowMoveOffsetY, this.centerCircleDiameter, this.centerCircleDiameter);
+        ellipse(width / 2 + this.circleA_x_offset, currentY, this.centerCircleDiameter, this.centerCircleDiameter);
       } else {
-        rect(width / 2 + this.circleA_x_offset + this.arrowMoveOffsetX, currentY + this.arrowMoveOffsetY, this.sideStretchedWidth, this.stretchedHeight);
+        rect(width / 2 + this.circleA_x_offset, currentY, this.sideStretchedWidth, this.stretchedHeight);
       }
     
       // 원 3 (왼쪽으로 이동) - 스트레치 애니메이션 적용
       if (this.stretchAnimationState === 'idle') {
-        ellipse(width / 2 + this.circleB_x_offset + this.arrowMoveOffsetX, currentY + this.arrowMoveOffsetY, this.centerCircleDiameter, this.centerCircleDiameter);
+        ellipse(width / 2 + this.circleB_x_offset, currentY, this.centerCircleDiameter, this.centerCircleDiameter);
       } else {
-        rect(width / 2 + this.circleB_x_offset + this.arrowMoveOffsetX, currentY + this.arrowMoveOffsetY, this.sideStretchedWidth, this.stretchedHeight);
+        rect(width / 2 + this.circleB_x_offset, currentY, this.sideStretchedWidth, this.stretchedHeight);
       }
     }
 
@@ -835,6 +807,39 @@ class Scene1 {
       });
       pop();
     }
+
+    // --- 클릭으로 생성된 원 그리기 및 업데이트 ---
+    const now = millis();
+    const circleFadeDuration = 2000; // 2초
+
+    // 아직 사라지지 않은 원들만 남기고 배열을 업데이트합니다.
+    this.clickCircles = this.clickCircles.filter(circle => now - circle.creationTime < circleFadeDuration);
+
+    this.clickCircles.forEach(circle => {
+      const elapsed = now - circle.creationTime;
+      const progress = elapsed / circleFadeDuration;
+      const alpha = lerp(255, 0, progress); // 서서히 사라지는 효과를 위한 투명도 계산
+
+      // 음원 재생 3.5초 이후부터 깜빡임 효과 적용
+      if (this.song.currentTime() > 3.5) {
+        // 700BPM에 맞춰 깜빡임 (짝수 비트에만 그림)
+        if (floor(millis() / this.beatDuration) % 2 === 0) {
+          push();
+          noStroke();
+          fill(255, alpha); // 흰색, 계산된 투명도 적용
+          ellipse(circle.x, circle.y, circle.diameter, circle.diameter);
+          pop();
+        }
+      } else {
+        // 3.5초 이전에는 항상 보이도록 그림 (깜빡임 없음)
+        push();
+        noStroke();
+        fill(255, alpha); // 흰색, 계산된 투명도 적용
+        ellipse(circle.x, circle.y, circle.diameter, circle.diameter);
+        pop();
+      }
+    });
+
   }
 
   // 재생/일시정지 로직을 별도 함수로 분리
@@ -898,25 +903,22 @@ class Scene1 {
   keyPressed() {
     if (keyCode === 32) { // 32 is the keycode for SPACEBAR
       this.togglePlay();
-    } else if (this.arrowMoveDirection === null) { // 다른 화살표 애니메이션이 진행 중이 아닐 때만
-      if (keyCode === LEFT_ARROW) {
-        this.arrowMoveDirection = 'LEFT';
-        this.arrowMoveStartTime = millis();
-      } else if (keyCode === RIGHT_ARROW) {
-        this.arrowMoveDirection = 'RIGHT';
-        this.arrowMoveStartTime = millis();
-      } else if (keyCode === UP_ARROW) {
-        this.arrowMoveDirection = 'UP';
-        this.arrowMoveStartTime = millis();
-      } else if (keyCode === DOWN_ARROW) {
-        this.arrowMoveDirection = 'DOWN';
-        this.arrowMoveStartTime = millis();
-      }
     }
   }
 
   // 화면을 터치(클릭)하면 재생/일시정지 토글
   mousePressed() {
-    this.togglePlay();
+    // 음악이 재생 중이 아닐 때만 클릭으로 재생을 시작할 수 있습니다.
+    if (!this.song.isPlaying()) {
+      this.togglePlay();
+    }
+    
+    // 클릭한 위치에 새로운 원을 추가합니다.
+    this.clickCircles.push({
+      x: mouseX,
+      y: mouseY,
+      creationTime: millis(),
+      diameter: this.centerCircleDiameter
+    });
   }
 }
