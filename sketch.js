@@ -165,6 +165,11 @@ function keyReleased() {
 
 function mousePressed() {
   // 모든 환경(PC, 모바일)에서 터치/클릭으로 시작/일시정지
+  // 모바일 브라우저에서 오디오 자동 재생 정책으로 인해 사용자의 첫 인터랙션이 필요합니다.
+  if (getAudioContext().state !== 'running') {
+    getAudioContext().resume();
+  }
+
   if (sceneManager.currentScene && sceneManager.currentScene.mousePressed) {
     sceneManager.currentScene.mousePressed();
   }
