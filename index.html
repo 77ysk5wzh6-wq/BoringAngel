@@ -5,6 +5,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>p5.js example</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Ballet:opsz@16..72&family=Bitcount+Prop+Single:wght@100..900&family=Cinzel+Decorative:wght@400;700;900&family=EB+Garamond:ital,wght@0,400..800;1,400..800&family=Fira+Mono:wght@400;500;700&family=Geom:ital,wght@0,300..900;1,300..900&family=Shippori+Mincho+B1&family=Work+Sans:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
   <style>
     body {
       padding: 0;
@@ -21,29 +24,77 @@
     /* Scene 2에서 필터 효과가 활성화될 때 적용될 CSS */
     body.scene2-filter-active canvas {
       animation: glitch 0.1s infinite;
-    }
+    }    
     
     @keyframes glitch {
       0% {
         transform: translate(0);
       }
       20% {
-        transform: translate(-4px, 4px);
+        transform: translate(-2px, 10px);
       }
       40% {
-        transform: translate(-4px, -4px);
+        transform: translate(-2px, -10px);
       }
       60% {
-        transform: translate(4px, 4px);
+        transform: translate(2px, 10px);
       }
       80% {
-        transform: translate(4px, -4px);
+        transform: translate(2px, -10px);
       }
       100% {
         transform: translate(0);
       }
     }
     
+    /* Scene 3에서 X축으로만 떨리는 글리치 효과 */
+    body.scene3-glitch-active canvas {
+      animation: glitch-x 0.1s; /* infinite 제거하여 한 번만 실행되도록 수정 */
+    }
+
+    @keyframes glitch-x {
+      0% {
+        transform: translate(0, 0);
+      }
+      20% {
+        transform: translate(-9px, 0);
+      }
+      40% {
+        transform: translate(-9px, 0);
+      }
+      60% {
+        transform: translate(9px, 0);
+      }
+      80% {
+        transform: translate(9px, 0);
+      }
+      100% {
+        transform: translate(0, 0);
+      }
+    }
+
+    /* Scene 4를 위한 글리치 효과 */
+    body.scene4-glitch-active canvas {
+      animation: glitch-scene4 0.1s; /* 한 번만 실행 */
+    }
+
+    @keyframes glitch-scene4 {
+      0% {
+        transform: translate(0, 0) scale(1);
+      }
+      25% {
+        transform: translate(15px, -5px);
+      }
+      50% {
+        transform: translate(-10px, 10px);
+      }
+      75% {
+        transform: translate(5px, -15px);
+      }
+      100% {
+        transform: translate(0, 0) scale(1);
+      }
+    }
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/addons/p5.sound.js"></script>

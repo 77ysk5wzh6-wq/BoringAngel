@@ -8,15 +8,57 @@ class Scene4 {
     this.GATHER_START_RANDOM_DURATION = 5; // 출발 시간의 무작위 범위 (초)
     this.GATHER_END_RANDOM_DURATION = 3;   // 도착 시간의 무작위 범위 (초)
 
+    // --- Scene3에서 가져온 폰트 리스트 ---
+    this.fonts = [
+      'Fira Mono',
+      'Geom',
+      'Bitcount Prop Single',
+      'EB Garamond',
+      'Cinzel Decorative',
+      'Shippori Mincho B1',
+      'Work Sans',
+      'Ballet'
+    ];
+
     this.song = song;
     this.video = null; // 비디오 엘리먼트
-    this.asciiGlyphs = [];
+    this.fft = null; // FFT 분석 객체
+
+    // --- 다국어 문자셋 및 폰트 설정 ---
+    this.languageSets = [
+      {
+        name: 'ASCII',
+        font: 'Fira Mono',
+        // 밝기 매핑을 위해 밀도가 낮은 문자부터 높은 문자 순으로 정렬합니다.
+        glyphs: ".`,-':;~i!lI?rvuno)9EZG%#MW&B@$".split('')
+      },
+      {
+        name: 'Japanese',
+        font: 'Shippori Mincho',
+        glyphs: "･ . , : ; ° ゛ ゝ ゞ ' ` へ と こ に す れ ね む ぬ め み @ #".split(' ')
+      },
+      {
+        name: 'Chinese',
+        font: 'Noto Sans TC',
+        glyphs: "･ . , : ; ° ' ` 之 乃 久 小 川 心 光 花 面 重 舞 龍 夢 難 鱗".split(' ')
+      },
+      {
+        name: 'Arabic',
+        font: 'Noto Sans Arabic',
+        // 아랍어는 오른쪽에서 왼쪽으로 쓰므로, 시각적 밀도에 맞춰 수동으로 정렬합니다.
+        glyphs: ". · , : ; ° ' ` ـ ا د ر ل م ن ب ج خ ع غ ف ه ي ش ص ض ط ظ".split(' ')
+      },
+      {
+        name: 'Korean',
+        font: 'sans-serif', // 기본 산세리프 폰트 사용
+        glyphs: "· . , ; : ㄴ ㄱ ㄷ ㄹ ㅎ 아 가 나 파 화 당 랑 날 홉 칼 말 날 랄 활".split(' ')
+      }
+    ];
+    this.currentAsciiSetIndex = 0; // 현재 사용 중인 문자셋 인덱스
 
     // --- 그리드 설정 ---
     this.initialCols = 37;
     this.initialRows = 20;
-    // this.finalCols = 56;
-    // this.finalRows = 32;
 
     this.finalCols = 112;
     this.finalRows = 64;
@@ -87,6 +129,11 @@ class Scene4 {
     this.arrowSweepDuration = 300; // 0.3초
     this.arrowSweepColor = color(255, 255, 0, 150); // 반투명 노란색
 
+    // --- 글리치 효과 변수 ---
+    this.lastMidValue = 0;
+    this.midThreshold = 168;
+    this.isGlitching = false;
+
   }
   
 
@@ -110,36 +157,34 @@ class Scene4 {
     this.video.hide(); // 비디오 엘리먼트를 화면에 표시하지 않음
     this.video.loop(); // 비디오 반복 재생
 
+    // --- FFT 객체 초기화 ---
+    this.fft = new p5.FFT(0.8, 512);
+
     // 최종 그리드(180x101)를 기준으로 셀 크기 계산
     this.cols = this.finalCols;
     this.rows = this.finalRows;
     this.cellSize = width / this.cols;
     this.glyphSize = this.cellSize;
 
-    // 제공된 문자열은 밀도가 낮은 순서(. -> @)로 정렬되어 있습니다.
-    const densityString = ".`,-':;~i!lI?rvuno)9EZG%#MW&B@$";
-
-    // 밝기 매핑을 위해 배열을 뒤집어, 어두울수록 밀도 높은 문자가 선택되도록 합니다.
-    this.asciiGlyphs = densityString.split('').reverse();
-
     this.isReady = true;
 
-    console.log("Scene 3 is set up and ready.");
+    console.log("Scene 4 is set up and ready.");
     console.log(`Grid: ${this.cols}x${this.rows}`);
-    console.log(`Using ${this.asciiGlyphs.length} glyphs: ${this.asciiGlyphs.join('')}`);
+    // 초기 문자셋(ASCII) 정보를 출력하도록 수정합니다.
+    console.log(`Using ${this.languageSets[0].glyphs.length} glyphs for initial set: ${this.languageSets[0].glyphs.join('')}`);
   }
 
   // 씬이 활성화될 때마다 호출됩니다.
-  enter() {
+  enter(data) {
     if (this.video) {
       this.video.time(0);
       this.video.pause(); // 애니메이션이 끝날 때까지 비디오 정지
-    }
+    } 
     this.currentScale = 1;
     this.targetScale = 1;
-    this.transitionState = 'shrinking';
+    this.transitionState = 'shrinking'; // 씬4가 시작되면 바로 shrinking 부터 시작
     this.transitionStartTime = millis();
-    this.prepareInitialGrid();
+    this.prepareInitialGrid(data ? data.gridData : null);
 
     // --- 임팩트 상태 리셋 ---
     this.impactActive = false;
@@ -151,6 +196,13 @@ class Scene4 {
     // --- 하이라이트 색상 인덱스 리셋 ---
     this.highlightColorIndex = 0;
 
+    // --- 글리치 상태 리셋 ---
+    this.lastMidValue = 0;
+    this.isGlitching = false;
+
+    // --- 문자셋 인덱스 리셋 ---
+    this.currentAsciiSetIndex = 0;
+
     frameRate(30); // 비디오 프레임레이트와 유사하게 설정
   }
 
@@ -161,12 +213,30 @@ class Scene4 {
     // 외부(다른 씬 또는 sketch.js)에 영향을 주지 않도록 격리합니다.
     push();
     // shrinking 상태에서는 잔상 효과를 위해 배경을 그리지 않습니다.
+
     if (this.transitionState !== 'shrinking') {
       background(255);
     }
 
     const currentTime = this.song.isPlaying() ? this.song.currentTime() : 0;
     const now = millis();
+
+    // --- FFT 분석 및 글리치 효과 트리거 ---
+    if (this.song.isPlaying()) {
+      this.fft.analyze();
+      const midValue = this.fft.getEnergy("mid");
+
+      if (this.lastMidValue < this.midThreshold && midValue >= this.midThreshold && !this.isGlitching) {
+        this.isGlitching = true;
+        document.body.classList.add('scene4-glitch-active');
+
+        setTimeout(() => {
+          document.body.classList.remove('scene4-glitch-active');
+          this.isGlitching = false;
+        }, 10); // 0.1초 (CSS 애니메이션 시간과 동일)
+      }
+      this.lastMidValue = midValue;
+    }
 
     // 자동 하이라이트 색상 변경
     if (currentTime < this.GATHER_START_TIME) {
@@ -224,7 +294,7 @@ class Scene4 {
     pop(); // push에 대한 pop
   }
 
-  prepareInitialGrid() {
+  prepareInitialGrid(scene3GridData) {
     this.gridData = [];
     const poem = `Look again at that dot.
     That's here. That's home. That's us.
@@ -245,6 +315,7 @@ class Scene4 {
       this.gridData.push({
         char: ' ',
         targetChar: ' ',
+        font: 'Fira Mono', // 기본 폰트
         color: color(0, 0, 255), // 파란색
         isMorphed: false, // morph 애니메이션에서 변환되었는지 여부
         // --- 중앙으로 모이는 애니메이션을 위한 속성 ---
@@ -276,6 +347,10 @@ class Scene4 {
         if (this.gridData[targetIndex]) {
           // 인용문 길이 내에서만 글자를 채우고, 나머지는 공백으로 둡니다.
           if (sourceIndex < poemChars.length) {
+            // Scene3 데이터가 있으면 해당 폰트를 사용, 없으면 기본 폰트 사용
+            if (scene3GridData && scene3GridData[sourceIndex]) {
+              this.gridData[targetIndex].font = scene3GridData[sourceIndex].font;
+            }
             this.gridData[targetIndex].char = poemChars[sourceIndex];
           }
           // sourceIndex가 poemChars.length 이상이면, 초기값인 ' '가 유지됩니다.
@@ -320,6 +395,7 @@ class Scene4 {
         const targetIndex = (startRow + j) * this.finalCols + (startCol + i);
         if (this.gridData[targetIndex]) {
           const cell = this.gridData[targetIndex];
+          textFont(cell.font); // 각 셀의 폰트 적용
           const x = currentX + i * currentCellWidth + currentCellWidth / 2;
           const y = currentY + j * currentCellHeight + currentCellHeight / 2;
           text(cell.char, x, y);
@@ -385,6 +461,7 @@ class Scene4 {
         const cell = this.gridData[j * this.finalCols + i];
         if (!cell) continue;
 
+        textFont(cell.font); // 각 셀의 폰트 적용
         const x = offsetX + i * this.cellSize + this.cellSize / 2;
         const y = offsetY + j * this.cellSize + this.cellSize / 2;
 
@@ -403,6 +480,7 @@ class Scene4 {
         if (progress > 0 && random() > 0.988) {
           // 초기 30x18 영역 밖의 셀에만 무작위 문자를 채웁니다.
           cell.char = random(this.randomChars.split(''));
+          cell.font = random(this.fonts); // 씬3의 폰트 리스트에서 랜덤하게 선택
           // 문자가 변경되는 순간 하이라이트 트리거
           if (random() < highlightProbability) {
             cell.highlightStartTime = now;
@@ -433,6 +511,7 @@ class Scene4 {
     for (let i = 0; i < this.gridData.length; i++) {
       const cell = this.gridData[i];
       const x = offsetX + (i % this.finalCols) * this.cellSize + this.cellSize / 2;
+      textFont(cell.font); // 각 셀의 폰트 적용
       const y = offsetY + floor(i / this.finalCols) * this.cellSize + this.cellSize / 2;
       fill(cell.color);
       text(cell.char, x, y);
@@ -464,13 +543,16 @@ class Scene4 {
         const g = this.video.pixels[idx + 1];
         const b = this.video.pixels[idx + 2];
         const brightness = (r + g + b) / 3;
-        const glyphIndex = floor((brightness / 255) * (this.asciiGlyphs.length - 1));
-        this.gridData[i].targetChar = this.asciiGlyphs[glyphIndex];
 
         const cell = this.gridData[i];
+        const currentGlyphs = this.languageSets[this.currentAsciiSetIndex].glyphs;
+        // 밝기 값에 따라 현재 문자셋에서 적절한 문자를 선택합니다. (매핑 반전)
+        // 어두울수록(brightness 0) 밀도 높은 문자(배열의 끝), 밝을수록(255) 밀도 낮은 문자(배열의 시작)를 선택합니다.
+        const glyphIndex = floor(map(brightness, 0, 255, currentGlyphs.length - 1, 0));
+        cell.targetChar = currentGlyphs[glyphIndex];
 
         // --- 하이라이트 로직: 문자가 변경되었는지 확인 ---
-        if (cell.targetChar !== cell.previousChar) {
+        if (cell.targetChar !== this.gridData[i].previousChar) {
           // 문자가 변경되면, 마지막 변경 시간을 기록하고 하이라이트를 제거합니다.
           cell.lastCharChangeTime = now;
           cell.highlightStartTime = 0;
@@ -503,6 +585,7 @@ class Scene4 {
     for (let i = 0; i < this.gridData.length; i++) {
       const cell = this.gridData[i];
       const x = offsetX + (i % this.finalCols) * this.cellSize + this.cellSize / 2;
+      textFont(cell.font); // 각 셀의 폰트 적용
       const y = offsetY + floor(i / this.finalCols) * this.cellSize + this.cellSize / 2;
 
       // --- 하이라이트 그리기 ---
@@ -520,6 +603,7 @@ class Scene4 {
       // 아직 변환되지 않은 셀에 대해서만 확률적으로 변환을 시도합니다.
       if (!cell.isMorphed && random() < progress * 0.25) {
         cell.isMorphed = true;
+        cell.font = 'Fira Mono'; // morphing될 때 폰트를 Fira Mono로 변경
         // 글자가 변하는 순간, 하이라이트 효과를 트리거합니다.
         if (random() < highlightProbability) {
           cell.highlightStartTime = now;
@@ -535,6 +619,7 @@ class Scene4 {
       // 애니메이션이 끝나면 모든 셀을 morphed 상태로 만듭니다.
       for (let i = 0; i < this.gridData.length; i++) {
         this.gridData[i].isMorphed = true;
+        this.gridData[i].font = 'Fira Mono'; // 모든 폰트를 Fira Mono로 통일
       }
 
       this.transitionState = 'playing';
@@ -656,6 +741,7 @@ class Scene4 {
           cell.highlightStartTime = 0;
         }
 
+        textFont(cell.font);
         text(cell.targetChar, currentX, currentY);
       }
     } else {
@@ -665,6 +751,7 @@ class Scene4 {
       const cell = this.gridData[i];
       let x = offsetX + (i % this.finalCols) * this.cellSize + this.cellSize / 2;
       let y = offsetY + floor(i / this.finalCols) * this.cellSize + this.cellSize / 2;
+      textFont(cell.font); // 각 셀의 폰트 적용
 
       // --- 점프 애니메이션 y좌표 계산 ---
       if (cell.isJumping) {
@@ -725,6 +812,7 @@ class Scene4 {
       }
 
       fill(cell.color);
+      textFont(cell.font);
       text(cell.targetChar, x, y);
     }
    }
@@ -740,7 +828,19 @@ class Scene4 {
 
   // 메인 스케치의 keyPressed에서 호출됩니다.
   keyPressed() {
-    if (key === '6') { // 아스키 아트가 재생 중일 때만 효과 활성화
+    // 오른쪽 방향키를 누르면 문자셋을 변경합니다.
+    if (keyCode === RIGHT_ARROW && this.transitionState === 'playing' && !this.arrowSweepActive) {
+      this.currentAsciiSetIndex = (this.currentAsciiSetIndex + 1) % this.languageSets.length;
+      const newSet = this.languageSets[this.currentAsciiSetIndex];
+      console.log(`Switched to ${newSet.name} character set.`);
+
+      // 모든 셀의 폰트를 새로운 폰트로 업데이트합니다.
+      for (const cell of this.gridData) {
+        cell.font = newSet.font;
+      }
+      // prepareMorphTarget()을 즉시 호출하여 화면의 글자들을 새 문자셋 기준으로 업데이트합니다.
+      this.prepareMorphTarget();
+    } else if (key === '6') { // 아스키 아트가 재생 중일 때만 효과 활성화
       if (this.transitionState === 'playing' && !this.impactActive) {
         this.impactActive = true;
         this.impactStartTime = millis();
@@ -753,12 +853,9 @@ class Scene4 {
       }
     } else if (!this.arrowSweepActive) { // 다른 쓸기 애니메이션이 진행 중이 아닐 때만
       if (keyCode === LEFT_ARROW) {
+        // 오른쪽 방향키는 문자셋 변경에 사용되므로, 왼쪽 방향키 로직만 남깁니다.
         this.arrowSweepActive = true;
         this.arrowSweepDirection = 'LEFT';
-        this.arrowSweepStartTime = millis();
-      } else if (keyCode === RIGHT_ARROW) {
-        this.arrowSweepActive = true;
-        this.arrowSweepDirection = 'RIGHT';
         this.arrowSweepStartTime = millis();
       } else if (keyCode === UP_ARROW) {
         this.arrowSweepActive = true;

@@ -183,15 +183,15 @@ class SceneManager {
     }
   }
 
-  showScene(index, callback) {
+  showScene(index, data) {
     if (index < this.scenes.length) {
       this.sceneIndex = index;
       this.currentScene = this.scenes[index];
       // 씬 전환 시에는 setup() 대신 enter()를 호출하여 상태를 리셋합니다.
       if (this.currentScene.enter) {
-        this.currentScene.enter();
+        // 씬 전환 시 데이터를 함께 전달합니다.
+        this.currentScene.enter(data);
       }
-      if (callback) callback();
     }
   }
 
@@ -227,7 +227,9 @@ class SceneManager {
         else if (currentTime >= 182.1 && this.sceneIndex < 4) { // Scene5로 전환
           this.showScene(4);
         } else if (currentTime >= 144.03 && this.sceneIndex < 3) { // Scene4로 전환
-          this.showScene(3);
+          const scene3 = this.scenes[2]; // Scene3 인스턴스 가져오기
+          // Scene3의 그리드 데이터를 Scene4로 전달
+          this.showScene(3, { gridData: scene3.finalGridState });
         } else if (currentTime >= 111.0 && this.sceneIndex < 2) { // Scene3로 전환
           this.showScene(2);
         } else if (currentTime >= 60.167 && this.sceneIndex < 1) { // Scene2로 전환

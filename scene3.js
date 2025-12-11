@@ -7,6 +7,17 @@ class Scene3 {
     this.YOGA_EMOJI_START_TIME = 141.03;
     this.EMOJI_DURATION = 1.0;
 
+    this.fonts = [
+      'Fira Mono',
+      'Geom',
+      'Bitcount Prop Single',
+      'EB Garamond',
+      'Cinzel Decorative',
+      'Shippori Mincho B1',
+      'Work Sans',
+      'Ballet'
+    ];
+
     this.song = song;
 
     // --- Poem Words ---
@@ -26,6 +37,7 @@ our joy and suffering,
     // 쉼표, 줄바꿈 등을 제거하고 단어 단위로 쪼개 배열에 저장합니다.
     this.words = poem.replace(/\n/g, ' ').split(/\s+/).filter(word => word.length > 0);
     this.wordIndex = 0; // 현재 단어의 인덱스
+    this.currentWordFont = null; // 현재 단어에 적용할 폰트를 저장하는 변수
 
     // 단어 표시용 (HighMid 기반)
     this.isWordVisible = false; // 단어가 화면에 보이는지 여부
@@ -78,6 +90,22 @@ our joy and suffering,
     // --- 색상 반전 효과 변수 ---
     this.isInverting = false;
     this.inversionStartTime = 0;
+
+    // --- 색상 플래시 효과 변수 ---
+    this.flashes = []; // 플래시 효과를 배열로 관리 [{startTime, duration, fontColor, bgColor}]
+    this.activeFlash = null; // 현재 활성화된 플래시 객체
+    this.flashDuration = 50; // 각 플래시 지속 시간 (0.09초)
+
+    // mid 값 기반 트리거를 위한 변수
+    this.lastMidValue = 0;
+    this.midThreshold = 163;
+
+    // highMid 값 기반 글리치 효과를 위한 변수
+    this.lastHighMidValue = 0;
+    this.highMidThreshold = 140;
+    this.isGlitching = false; // 글리치 중복 방지 플래그
+    this.lastGlitchTime = 0; // 마지막 글리치 발생 시간
+    this.glitchCooldown = 200; // 최소 글리치 간격 (0.1초)
   }
 
   setup() {
@@ -92,6 +120,7 @@ our joy and suffering,
   enter() {
     this.currentWord = '';
     this.wordIndex = 0;
+    this.currentWordFont = this.fonts[0]; // 폰트 초기화
     this.isWordVisible = false;
     this.allWordsDisplayed = false;
     this.lastWordState = 'idle';
@@ -102,6 +131,12 @@ our joy and suffering,
     this.isInverting = false; // 리셋 시 색상 반전 상태 초기화
     this.inversionStartTime = 0;
     this.shiftDirection = 'RIGHT'; // 씬 시작 시 방향 초기화
+    this.lastMidValue = 0; // mid 값 초기화
+    this.flashes = []; // 플래시 배열 초기화
+    this.activeFlash = null; // 활성 플래시 객체 초기화
+    this.lastHighMidValue = 0; // highMid 값 초기화
+    this.isGlitching = false; // 글리치 상태 초기화
+    this.lastGlitchTime = 0; // 글리치 시간 초기화
 
     // --- 배경 그리드 데이터 생성 ---
     this.finalGridState = [];
@@ -119,6 +154,7 @@ our joy and suffering,
           char: char,
           revealed: false,
           isShifting: false, // 글자 이동 애니메이션 상태
+          font: random(this.fonts), // 각 글자에 무작위 폰트 할당
           shiftStartTime: 0, // 글자 이동 애니메이션 시작 시간
         });
         charIndex++;
@@ -133,7 +169,60 @@ our joy and suffering,
 
     if (this.song.isPlaying()) {
       let currentTime = this.song.currentTime();
-      background(255);
+      const now = millis();
+
+      this.fft.analyze();
+      const midValue = this.fft.getEnergy("mid");
+      const highMidValue = this.fft.getEnergy("highMid");
+      console.log('mid:', midValue); // mid 값 콘솔 출력
+
+      // --- 연속 색상 플래시 트리거 ---
+      if (this.lastMidValue < this.midThreshold && midValue >= this.midThreshold) {
+        // 첫 번째 플래시
+        this.flashes.push({
+          startTime: now,
+          duration: this.flashDuration,
+          fontColor: color(random(255), random(255), random(255)),
+          bgColor: color(random(255), random(255), random(255))
+        });
+        // 두 번째 플래시 (첫 번째 플래시 직후 시작)
+        this.flashes.push({
+          startTime: now + this.flashDuration,
+          duration: this.flashDuration,
+          fontColor: color(random(255), random(255), random(255)),
+          bgColor: color(random(255), random(255), random(255))
+        });
+      }
+      this.lastMidValue = midValue; // 현재 mid 값을 다음 프레임을 위해 저장
+
+      // --- 활성화된 플래시 확인 및 색상 업데이트 ---
+      this.activeFlash = null;
+      this.flashes = this.flashes.filter(flash => now < flash.startTime + flash.duration);
+      this.flashes.forEach(flash => { if (now >= flash.startTime) this.activeFlash = flash; });
+
+      // --- 131초 이후 highMid 기반 글리치 효과 ---
+      if (currentTime >= 131 && currentTime < 144.03) {
+        // highMid 값이 140을 넘는 순간에만 트리거
+        if (this.lastHighMidValue < this.highMidThreshold && highMidValue >= this.highMidThreshold && now - this.lastGlitchTime > this.glitchCooldown) {
+          this.isGlitching = true;
+          this.lastGlitchTime = now; // 마지막 글리치 시간 업데이트
+          document.body.classList.add('scene3-glitch-active');
+
+          // 0.1초 후에 클래스를 제거하여 애니메이션을 한 번만 실행
+          setTimeout(() => {
+            document.body.classList.remove('scene3-glitch-active');
+            this.isGlitching = false; // isGlitching은 애니메이션 지속 시간 동안만 유지
+          }, 100);
+        }
+      }
+      this.lastHighMidValue = highMidValue; // 현재 highMid 값을 다음 프레임을 위해 저장
+
+      // 활성 플래시가 있으면 배경을 어둡게, 아니면 흰색으로 설정
+      if (this.activeFlash) {
+        background(this.activeFlash.bgColor); // 플래시의 배경색 사용
+      } else {
+        background(255);
+      }
 
       // 이 씬은 112초부터 시작
       if (currentTime >= this.SCENE_START_TIME) {
@@ -161,8 +250,6 @@ our joy and suffering,
             this.drawBackgroundGrid(false);
           }
 
-          const now = millis();
-
           // --- 중앙 단어 및 배경 그리드 업데이트 ---
           // 0.15초 간격으로 다음 단어 표시
           if (now - this.lastWordChangeTime > this.wordDisplayDuration) {
@@ -176,6 +263,7 @@ our joy and suffering,
             this.wordDisplayStartTime = now; // 단어 표시 시작 시간 기록
 
             this.currentWord = this.words[this.wordIndex];
+            this.currentWordFont = random(this.fonts); // 단어가 바뀔 때 폰트를 한 번만 랜덤으로 선택
 
             // 배경 그리드: 아직 공개되지 않은 단어 중 하나를 무작위로 선택하여 공개
             if (this.unrevealedWordIndices.length > 0) {
@@ -300,7 +388,12 @@ our joy and suffering,
     let shakeAmt = map(vol, 0, 1, 0, 2); // 배경 그리드는 더 작은 떨림 사용
 
     push(); // 텍스트 스타일 설정
-    textFont('sans-serif');
+
+    // 색상 플래시가 활성화된 경우, 모든 텍스트 색상을 플래시 색상으로 변경
+    if (this.activeFlash) {
+      fill(this.activeFlash.fontColor);
+    }
+
     textSize(textSizeValue);
     textAlign(CENTER, CENTER);
 
@@ -316,6 +409,16 @@ our joy and suffering,
           let char = cell.char;
           let x = i * cellWidth + cellWidth / 2; // 기본 x, y 좌표
           let y = j * cellHeight + cellHeight / 2;
+          textFont(cell.font); // 각 셀에 할당된 폰트 적용
+          
+          // 특정 폰트 크기 보정
+          if (cell.font === 'Work Sans') {
+            textSize(textSizeValue * 0.8);
+          } else if (cell.font === 'Ballet') {
+            textSize(textSizeValue * 1.3);
+          } else {
+            textSize(textSizeValue); // 다른 폰트는 기본 크기로 설정
+          }
 
           // --- 글자 이동 애니메이션 계산 ---
           if (cell.isShifting) {
@@ -354,23 +457,27 @@ our joy and suffering,
             textStyle(BOLD);
           }
 
-          // CMY Split with shake
-          push();
-          blendMode(MULTIPLY);
+          if (!this.activeFlash) {
+            // CMY Split with shake
+            push();
+            blendMode(MULTIPLY);
 
-          // Cyan Channel
-          fill(0, 255, 255);
-          let shakeX_cyan = random(-shakeAmt, shakeAmt);
-          let shakeY_cyan = random(-shakeAmt, shakeAmt);
-          text(char, x - offset + shakeX_cyan, y - offset + shakeY_cyan);
+            // Cyan Channel
+            fill(0, 255, 255);
+            let shakeX_cyan = random(-shakeAmt, shakeAmt);
+            let shakeY_cyan = random(-shakeAmt, shakeAmt);
+            text(char, x - offset + shakeX_cyan, y - offset + shakeY_cyan);
 
-          // Magenta Channel
-          fill(255, 0, 255);
-          let shakeX_magenta = random(-shakeAmt, shakeAmt);
-          let shakeY_magenta = random(-shakeAmt, shakeAmt);
-          text(char, x + offset + shakeX_magenta, y + offset + shakeY_magenta);
+            // Magenta Channel
+            fill(255, 0, 255);
+            let shakeX_magenta = random(-shakeAmt, shakeAmt);
+            let shakeY_magenta = random(-shakeAmt, shakeAmt);
+            text(char, x + offset + shakeX_magenta, y + offset + shakeY_magenta);
 
-          pop();
+            pop();
+          } else {
+            text(char, x, y); // 플래시 중에는 단색으로 그림
+          }
         }
       }
     }
@@ -554,13 +661,27 @@ our joy and suffering,
   drawWord(alpha = 255) {
     if (!this.isWordVisible && this.lastWordState === 'idle') return; // 보이지 않을 때는 그리지 않음
 
-    textFont('sans-serif');
+    textFont(this.currentWordFont); // 저장된 폰트를 사용
     textAlign(CENTER, CENTER);
-    fill(0, 0, 255, alpha);
+
+    if (this.activeFlash) {
+      fill(this.activeFlash.fontColor, alpha);
+    } else {
+      fill(0, 0, 255, alpha);
+    }
 
     // 단어가 화면 너비를 넘지 않도록 텍스트 크기 동적 조절
     let initialSize = 600;
     textSize(initialSize);
+
+    // 'Work Sans' 폰트 크기 보정
+    if (this.currentWordFont === 'Work Sans') {
+      initialSize *= 0.8;
+      textSize(initialSize);
+    } else if (this.currentWordFont === 'Ballet') {
+      initialSize *= 1.3;
+      textSize(initialSize);
+    }
 
     const textW = textWidth(this.currentWord);
     let padding = 100;
@@ -575,32 +696,28 @@ our joy and suffering,
     let offset = map(vol, 0, 1, 0, 3); // 볼륨에 따라 오프셋 조절 (최대 5px)
 
     // 떨림 효과 추가 (볼륨에 비례)
-    let shakeAmt = map(vol, 0, 1, 0, 5);
+    let shakeAmt = map(vol, 0, 1, 0, 5); 
 
-    push();
-    blendMode(MULTIPLY); // 흰색 배경에서는 MULTIPLY 모드 사용
+    if (this.activeFlash) {
+      text(this.currentWord, width / 2, height / 2);
+    } else {
+      push();
+      blendMode(MULTIPLY); // 흰색 배경에서는 MULTIPLY 모드 사용
 
-    // Cyan Channel (Red 흡수)
-    fill(0, 255, 255, alpha);
-    let shakeX_cyan = random(-shakeAmt, shakeAmt);
-    let shakeY_cyan = random(-shakeAmt, shakeAmt);
-    text(this.currentWord, width / 2 - offset + shakeX_cyan, height / 2 - offset + shakeY_cyan);
+      // Cyan Channel (Red 흡수)
+      fill(0, 255, 255, alpha);
+      let shakeX_cyan = random(-shakeAmt, shakeAmt);
+      let shakeY_cyan = random(-shakeAmt, shakeAmt);
+      text(this.currentWord, width / 2 - offset + shakeX_cyan, height / 2 - offset + shakeY_cyan);
 
-    // Magenta Channel (Green 흡수)
-    fill(255, 0, 255, alpha);
-    let shakeX_magenta = random(-shakeAmt, shakeAmt);
-    let shakeY_magenta = random(-shakeAmt, shakeAmt);
-    text(this.currentWord, width / 2 + offset + shakeX_magenta, height / 2 + offset + shakeY_magenta);
+      // Magenta Channel (Green 흡수)
+      fill(255, 0, 255, alpha);
+      let shakeX_magenta = random(-shakeAmt, shakeAmt);
+      let shakeY_magenta = random(-shakeAmt, shakeAmt);
+      text(this.currentWord, width / 2 + offset + shakeX_magenta, height / 2 + offset + shakeY_magenta);
 
-    // Yellow Channel (Blue 흡수) - 선택 사항이지만 더 풍부한 색감을 위해 추가
-    // fill(255, 255, 0, alpha);
-    // text(this.currentWord, width / 2, height / 2); 
-
-    // 원래 텍스트가 파란색(0,0,255)이므로 Cyan + Magenta가 겹치면 파란색이 됩니다.
-    // Yellow를 추가하면 검은색에 가까워지므로, 파란색을 유지하려면 Cyan과 Magenta만 사용합니다.
-
-    pop();
-    // text(this.currentWord, width / 2, height / 2); // 기존 코드 제거
+      pop();
+    }
   }
 
   drawFullPoem() {
@@ -609,22 +726,34 @@ our joy and suffering,
     const cellWidth = width / cols;
     const cellHeight = height / rows;
 
-    const poemChars = this.rawPoem.replace(/\n/g, ' ').replace(/\s+/g, ' ');
-
-    textFont('sans-serif');
     textAlign(CENTER, CENTER);
-    fill(this.fullPoemColor);
+    if (this.activeFlash) {
+      fill(this.activeFlash.fontColor);
+    } else {
+      fill(this.fullPoemColor);
+    }
     textSize(cellHeight);
 
     for (let j = 0; j < rows; j++) {
       for (let i = 0; i < cols; i++) {
         const gridIndex = j * cols + i;
-        const char = gridIndex < poemChars.length ? poemChars[gridIndex] : ' ';
+        const cell = this.finalGridState[gridIndex];
+        if (!cell) continue;
 
-        // 각 셀의 중앙 위치를 계산합니다.
+        textFont(cell.font); // 각 셀에 할당된 폰트를 사용하도록 수정
+        
+        // 'Work Sans' 폰트 크기 보정
+        if (cell.font === 'Work Sans') {
+          textSize(cellHeight * 0.8);
+        } else if (cell.font === 'Ballet') {
+          textSize(cellHeight * 1.3);
+        } else {
+          textSize(cellHeight);
+        }
+
         const x = i * cellWidth + cellWidth / 2;
         const y = j * cellHeight + cellHeight / 2;
-        text(char, x, y);
+        text(cell.char, x, y);
       }
     }
   }
