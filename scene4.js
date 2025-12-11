@@ -66,6 +66,11 @@ class Scene4 {
         // 시각적 밀도가 낮은 문자(밝은 영역)부터 높은 문자(어두운 영역) 순으로 정렬합니다.
         glyphs: ['◌', '𝅝', '𝀓', '𝀄', '♩', '♪', '𝁉', '♫', '♬', '♯', '𝄢', '𝇚', '𝅘𝅥𝅲', '𝄡', '𝄞', '𝄇']
       },
+      {
+        name: 'Shapes',
+        type: 'shapes', // 도형 기반 세트임을 나타내는 타입
+        shapes: ['square', 'circle', 'triangle', 'x-ellipse']
+      }
     ];
     this.currentAsciiSetIndex = 0; // 현재 사용 중인 문자셋 인덱스
 
@@ -289,8 +294,14 @@ class Scene4 {
           this.currentAsciiSetIndex = (this.currentAsciiSetIndex + 1) % this.languageSets.length;
           const newSet = this.languageSets[this.currentAsciiSetIndex];
           console.log(`Switched to ${newSet.name} character set.`);
-          for (const cell of this.gridData) {
-            cell.font = newSet.font;
+          if (newSet.type === 'shapes') {
+            for (const cell of this.gridData) {
+              cell.shape = random(newSet.shapes); // 각 셀에 랜덤 도형 할당
+            }
+          } else {
+            for (const cell of this.gridData) {
+              cell.font = newSet.font;
+            }
           }
           this.prepareMorphTarget();
         }
@@ -303,8 +314,11 @@ class Scene4 {
         this.currentAsciiSetIndex = 0;
         const newSet = this.languageSets[this.currentAsciiSetIndex];
         console.log(`Fixed to ${newSet.name} character set for gathering.`);
-        for (const cell of this.gridData) {
-          cell.font = newSet.font;
+        if (newSet.type === 'shapes') {
+          // gather 애니메이션 시작 시 도형 모드였다면, 각 셀에 랜덤 도형을 다시 할당합니다.
+          for (const cell of this.gridData) {
+            cell.shape = random(newSet.shapes);
+          }
         }
         this.prepareMorphTarget();
       }
@@ -387,6 +401,7 @@ class Scene4 {
         highlightColor: null, // 하이라이트 색상
         impactRandomFactor: 1.0, // '6'키 임팩트 효과의 랜덤 계수
         // --- 점프 애니메이션 속성 ---
+        shape: null, // 도형 모드를 위한 속성
         isJumping: false,
         jumpStartTime: 0,
         jumpDirection: -1, // -1: up, 1: down
@@ -628,14 +643,21 @@ class Scene4 {
 
         const cell = this.gridData[i];
         const currentGlyphs = this.languageSets[this.currentAsciiSetIndex].glyphs;
-        // 밝기 값에 따라 현재 문자셋에서 적절한 문자를 선택합니다. (매핑 반전)
-        // 어두울수록(brightness 0) 밀도 높은 문자(배열의 끝), 밝을수록(255) 밀도 낮은 문자(배열의 시작)를 선택합니다.
-        const glyphIndex = floor(map(brightness, 0, 255, currentGlyphs.length - 1, 0));
-        cell.targetChar = currentGlyphs[glyphIndex];
+        const currentSet = this.languageSets[this.currentAsciiSetIndex];
+
+        if (currentSet.type === 'shapes') {
+          // 도형 세트일 경우, 밝기에 따라 도형 크기를 조절합니다.
+          cell.shapeSize = map(brightness, 0, 255, this.cellSize, 0);
+          cell.targetChar = ' '; // 문자는 사용하지 않음
+        } else {
+          // 문자 세트일 경우, 밝기에 따라 문자를 선택합니다.
+          const glyphIndex = floor(map(brightness, 0, 255, currentGlyphs.length - 1, 0));
+          cell.targetChar = currentGlyphs[glyphIndex];
+        }
 
         // --- 하이라이트 로직: 문자가 변경되었는지 확인 ---
         if (cell.targetChar !== this.gridData[i].previousChar) {
-          // 문자가 변경되면, 마지막 변경 시간을 기록하고 하이라이트를 제거합니다.
+          // 문자가 변경되면, 마지막 변경 시간을 기록하고 하이라이트를 제거합니다. (도형 모드에서는 항상 변경됨)
           cell.lastCharChangeTime = now;
           cell.highlightStartTime = 0;
           this.gridData[i].previousChar = this.gridData[i].targetChar;
@@ -926,6 +948,54 @@ class Scene4 {
       }
     } else {
       // gather 애니메이션이 아닐 때의 일반 그리기 로직
+      const currentSet = this.languageSets[this.currentAsciiSetIndex];
+      if (currentSet.type === 'shapes') {
+        // --- 도형 모드 그리기 ---
+        rectMode(CENTER);
+        stroke(random(255), 0, random(255));
+
+        for (let i = 0; i < this.gridData.length; i++) {
+          const cell = this.gridData[i];
+          let x = offsetX + (i % this.finalCols) * this.cellSize + this.cellSize / 2;
+          let y = offsetY + floor(i / this.finalCols) * this.cellSize + this.cellSize / 2;
+
+          // 하이라이트 색상을 가져와서 알파값을 두 배로 설정합니다.
+          const baseColor = this.getHighlightColorForCell(i, 128);
+          const r = red(baseColor);
+          const g = green(baseColor);
+          const b = blue(baseColor);
+          const a = alpha(baseColor);
+          fill(r, g, b, min(a * 2, 255)); // 알파값을 두 배로 하되, 255를 넘지 않도록 합니다.
+
+          const shapeSize = cell.shapeSize || this.cellSize;
+
+          push();
+          translate(x, y);
+          switch (cell.shape) {
+            case 'square':
+              rect(0, 0, shapeSize, shapeSize);
+              break;
+            case 'circle':
+              ellipse(0, 0, shapeSize, shapeSize);
+              break;
+            case 'triangle':
+              const h = shapeSize * (sqrt(3) / 2);
+              triangle(0, -h / 2, -shapeSize / 2, h / 2, shapeSize / 2, h / 2);
+              break;
+            case 'x-ellipse':
+              ellipseMode(CENTER);
+              rotate(PI / 4);
+              ellipse(0, 0, shapeSize, shapeSize / 4);
+              rotate(PI / 2);
+              ellipse(0, 0, shapeSize, shapeSize / 4);
+              break;
+          }
+          pop();
+        }
+        // 도형 모드일 때는 아래의 문자 그리기 로직을 건너뜁니다.
+        return;
+      }
+
 
     for (let i = 0; i < this.gridData.length; i++) {
       const cell = this.gridData[i];

@@ -658,6 +658,10 @@ our joy and suffering,
         const x = startCol * cellWidth + currentWidth / 2; // 중앙 기준 x좌표
         const y = parseInt(row) * cellHeight + cellHeight / 2;
         rect(x, y, currentWidth, cellHeight);
+        push();
+        fill(0);
+        rect(x+currentWidth/2, y, 10, cellHeight);
+        pop();
       }
     }
   }
