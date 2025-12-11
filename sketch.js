@@ -156,6 +156,13 @@ function keyPressed() {
   }
 }
 
+function keyReleased() {
+  // 현재 씬에 keyReleased 함수가 있으면 호출합니다.
+  if (sceneManager.currentScene && sceneManager.currentScene.keyReleased) {
+    sceneManager.currentScene.keyReleased();
+  }
+}
+
 function mousePressed() {
   // 모든 환경(PC, 모바일)에서 터치/클릭으로 시작/일시정지
   if (sceneManager.currentScene && sceneManager.currentScene.mousePressed) {
@@ -245,6 +252,12 @@ class SceneManager {
   keyPressed() {
     if (this.currentScene) {
       this.currentScene.keyPressed();
+    }
+  }
+
+  keyReleased() {
+    if (this.currentScene && this.currentScene.keyReleased) {
+      this.currentScene.keyReleased();
     }
   }
 

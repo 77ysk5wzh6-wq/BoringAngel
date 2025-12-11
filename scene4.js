@@ -110,7 +110,7 @@ class Scene4 {
     this.baseJumpProbability = 0.01; // 5%
 
     this.lastHighlightColorChangeTime = 0; // 하이라이트 색상 변경 마지막 시간
-    this.highlightColorChangeInterval = 300; // 0.1초마다 색상 변경
+    this.highlightColorChangeInterval = 300; // 0.3초마다 색상 변경
 
     // --- '7' 키 하이라이트 색상 순환 관련 변수 ---
     this.highlightColorCycle = [
@@ -126,7 +126,7 @@ class Scene4 {
     this.arrowSweepActive = false;
     this.arrowSweepDirection = null;
     this.arrowSweepStartTime = 0;
-    this.arrowSweepDuration = 300; // 0.3초
+    this.arrowSweepDuration = 400; // 0.3초
     this.arrowSweepColor = color(255, 255, 0, 150); // 반투명 노란색
 
     // --- 글리치 효과 변수 ---
@@ -134,6 +134,13 @@ class Scene4 {
     this.midThreshold = 168;
     this.isGlitching = false;
 
+    // --- '8' 키 사각형 모드 변수 ---
+    this.isRectModeActive = false;
+    this.rectModeColor = () => color(random(255),random(255),0,50); // 사각형 모드 색상 설정
+
+    // --- '9' 키 원 모드 변수 ---
+    this.isCircleModeActive = false;
+    this.circleModeColor = () => color(random(255), 0, random(255),50); // 원 모드 색상 설정
   }
   
 
@@ -200,6 +207,12 @@ class Scene4 {
     this.lastMidValue = 0;
     this.isGlitching = false;
 
+    // --- 사각형 모드 리셋 ---
+    this.isRectModeActive = false;
+
+    // --- 원 모드 리셋 ---
+    this.isCircleModeActive = false;
+
     // --- 문자셋 인덱스 리셋 ---
     this.currentAsciiSetIndex = 0;
 
@@ -242,12 +255,33 @@ class Scene4 {
     if (currentTime < this.GATHER_START_TIME) {
       // gather 애니메이션이 시작되기 전까지만 0.1초마다 색상을 변경합니다.
       if (now - this.lastHighlightColorChangeTime > this.highlightColorChangeInterval) {
-        this.highlightColorIndex = (this.highlightColorIndex + 1) % this.highlightColorCycle.length;
         this.lastHighlightColorChangeTime = now;
+        this.highlightColorIndex = (this.highlightColorIndex + 1) % this.highlightColorCycle.length;
+
+        // --- 아스키 문자셋 자동 변경 ---
+        if (this.transitionState === 'playing') {
+          this.currentAsciiSetIndex = (this.currentAsciiSetIndex + 1) % this.languageSets.length;
+          const newSet = this.languageSets[this.currentAsciiSetIndex];
+          console.log(`Switched to ${newSet.name} character set.`);
+          for (const cell of this.gridData) {
+            cell.font = newSet.font;
+          }
+          this.prepareMorphTarget();
+        }
       }
     } else {
       // gather 애니메이션이 시작되면 하이라이트 색상을 파란색 계열(인덱스 0)로 고정합니다.
       this.highlightColorIndex = 0;
+      // ASCII 문자셋도 기본(인덱스 0)으로 고정합니다.
+      if (this.currentAsciiSetIndex !== 0) {
+        this.currentAsciiSetIndex = 0;
+        const newSet = this.languageSets[this.currentAsciiSetIndex];
+        console.log(`Fixed to ${newSet.name} character set for gathering.`);
+        for (const cell of this.gridData) {
+          cell.font = newSet.font;
+        }
+        this.prepareMorphTarget();
+      }
     }
 
     // 스마일 이모지 시간대에는 다른 모든 애니메이션을 중지하고 이모지만 그립니다.
@@ -504,6 +538,7 @@ class Scene4 {
     background(255);
     textAlign(CENTER, CENTER);
     textSize(this.glyphSize);
+    textStyle(BOLD); // morphing 단계부터 볼드 스타일 적용
 
     const offsetX = (width - this.finalCols * this.cellSize) / 2;
     const offsetY = (height - this.finalRows * this.cellSize) / 2;
@@ -641,8 +676,85 @@ class Scene4 {
 
   drawAsciiArt() {
     // 먼저 비디오의 현재 프레임을 기반으로 목표 문자를 업데이트합니다.
+    const now = millis();
+
+    // --- '8' 키 사각형 모드 처리 ---
+    if (this.isRectModeActive) {
+      // 사각형 모드 그리기 로직
+      this.video.loadPixels();
+      if (this.video.pixels.length > 0) {
+        background(255);
+        const effectCols = this.finalCols / 2;
+        const effectRows = this.finalRows / 2;
+        const effectCellSize = width / effectCols;
+        const offsetX = (width - effectCols * effectCellSize) / 2;
+        const offsetY = (height - effectRows * effectCellSize) / 2;
+
+        rectMode(CENTER);
+        noStroke();
+
+        for (let r = 0; r < effectRows; r++) {
+          for (let c = 0; c < effectCols; c++) {
+            const videoX = floor(map(c + 0.5, 0, effectCols, 0, this.video.width));
+            const videoY = floor(map(r + 0.5, 0, effectRows, 0, this.video.height));
+            const idx = (videoY * this.video.width + videoX) * 4;
+            const brightness = (this.video.pixels[idx] + this.video.pixels[idx + 1] + this.video.pixels[idx + 2]) / 3;
+
+            const rectHeight = map(brightness, 0, 255, effectCellSize, 0);
+            const x = offsetX + c * effectCellSize + effectCellSize / 2;
+            const y = offsetY + r * effectCellSize + effectCellSize / 2;
+
+            fill(this.rectModeColor());
+            rect(x, y, effectCellSize, rectHeight);
+          }
+        }
+      }
+      return; // 사각형 모드일 때는 아래의 일반 그리기 로직을 건너뜁니다.
+    }
+
+    // --- '9' 키 원 모드 처리 ---
+    if (this.isCircleModeActive) {
+      // 원 모드 그리기 로직
+      this.video.loadPixels();
+      if (this.video.pixels.length > 0) {
+        background(255);
+        const effectCols = this.finalCols / 2;
+        const effectRows = this.finalRows / 2;
+        const effectCellSize = width / effectCols;
+        const offsetX = (width - effectCols * effectCellSize) / 2;
+        const offsetY = (height - effectRows * effectCellSize) / 2;
+
+        noStroke();
+        for (let r = 0; r < effectRows; r++) {
+          for (let c = 0; c < effectCols; c++) {
+            const videoX = floor(map(c + 0.5, 0, effectCols, 0, this.video.width));
+            const videoY = floor(map(r + 0.5, 0, effectRows, 0, this.video.height));
+            const idx = (videoY * this.video.width + videoX) * 4;
+            const brightness = (this.video.pixels[idx] + this.video.pixels[idx + 1] + this.video.pixels[idx + 2]) / 3;
+            const circleDiameter = map(brightness, 0, 255, effectCellSize, 0);
+            const x = offsetX + c * effectCellSize + effectCellSize / 2;
+            const y = offsetY + r * effectCellSize + effectCellSize / 2;
+            fill(this.circleModeColor());
+
+            // --- X자 모양으로 겹친 두 개의 타원 그리기 ---
+            push();
+            translate(x, y);
+            ellipseMode(CENTER);
+            // 첫 번째 타원 (+45도 회전)
+            rotate(PI / 4);
+            ellipse(0, 0, circleDiameter, circleDiameter / 4);
+            // 두 번째 타원 (-45도 회전, 첫 번째 타원에서 90도 더 회전)
+            rotate(PI / 2);
+            ellipse(0, 0, circleDiameter, circleDiameter / 4);
+            pop();
+          }
+        }
+      }
+      return; // 원 모드일 때는 아래의 일반 그리기 로직을 건너뜁니다.
+    }
+
+
     this.prepareMorphTarget();
-    const now = millis(); // 'now' 변수 선언
     if (this.video.pixels.length === 0) return;
 
     const songTime = song.currentTime(); // 메인 스케치의 전역 song 변수 참조
@@ -681,6 +793,12 @@ class Scene4 {
 
     textAlign(CENTER, CENTER);
     textSize(this.glyphSize);
+    // 개더링이 시작되면 볼드를 해제하고, 그 전까지는 볼드를 유지합니다.
+    if (songTime >= this.GATHER_START_TIME) {
+      textStyle(NORMAL);
+    } else {
+      textStyle(BOLD);
+    }
     fill(0);
 
     const offsetX = (width - this.finalCols * this.cellSize) / 2;
@@ -828,18 +946,12 @@ class Scene4 {
 
   // 메인 스케치의 keyPressed에서 호출됩니다.
   keyPressed() {
-    // 오른쪽 방향키를 누르면 문자셋을 변경합니다.
-    if (keyCode === RIGHT_ARROW && this.transitionState === 'playing' && !this.arrowSweepActive) {
-      this.currentAsciiSetIndex = (this.currentAsciiSetIndex + 1) % this.languageSets.length;
-      const newSet = this.languageSets[this.currentAsciiSetIndex];
-      console.log(`Switched to ${newSet.name} character set.`);
-
-      // 모든 셀의 폰트를 새로운 폰트로 업데이트합니다.
-      for (const cell of this.gridData) {
-        cell.font = newSet.font;
-      }
-      // prepareMorphTarget()을 즉시 호출하여 화면의 글자들을 새 문자셋 기준으로 업데이트합니다.
-      this.prepareMorphTarget();
+    // '8' 키를 누르면 사각형 모드 활성화
+    if (key === '8' && this.transitionState === 'playing') {
+      this.isRectModeActive = true;
+    } else if (key === '9' && this.transitionState === 'playing') {
+      // '9' 키를 누르면 원 모드 활성화
+      this.isCircleModeActive = true;
     } else if (key === '6') { // 아스키 아트가 재생 중일 때만 효과 활성화
       if (this.transitionState === 'playing' && !this.impactActive) {
         this.impactActive = true;
@@ -852,8 +964,11 @@ class Scene4 {
         }
       }
     } else if (!this.arrowSweepActive) { // 다른 쓸기 애니메이션이 진행 중이 아닐 때만
-      if (keyCode === LEFT_ARROW) {
-        // 오른쪽 방향키는 문자셋 변경에 사용되므로, 왼쪽 방향키 로직만 남깁니다.
+      if (keyCode === RIGHT_ARROW) {
+        this.arrowSweepActive = true;
+        this.arrowSweepDirection = 'RIGHT';
+        this.arrowSweepStartTime = millis();
+      } else if (keyCode === LEFT_ARROW) {
         this.arrowSweepActive = true;
         this.arrowSweepDirection = 'LEFT';
         this.arrowSweepStartTime = millis();
@@ -866,6 +981,16 @@ class Scene4 {
         this.arrowSweepDirection = 'DOWN';
         this.arrowSweepStartTime = millis();
       }
+    }
+  }
+
+  keyReleased() {
+    // '8' 또는 '9' 키에서 손을 떼면 해당 모드를 비활성화합니다.
+    if (key === '8') {
+      this.isRectModeActive = false;
+    }
+    if (key === '9') {
+      this.isCircleModeActive = false;
     }
   }
 

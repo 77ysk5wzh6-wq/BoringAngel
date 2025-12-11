@@ -94,6 +94,15 @@ class Scene2 {
     // --- 배경 플래시 효과 변수 ---
     this.backgroundFlashTime = 0;
 
+    // --- highMid 기반 배경 분할 플래시 효과 변수 ---
+    this.highMidThreshold = 70;
+    this.lastHighMidValue = 0;
+    this.splitFlashes = []; // { side, startTime, duration, color }
+    this.splitFlashDuration1 = 50; // 왼쪽 플래시 지속 시간 (0.1초)
+    this.splitFlashDuration2 = 50; // 오른쪽 플래시 지속 시간 (0.1초)
+    this.lastSplitFlashTime = 0; // 마지막 플래시 트리거 시간
+    this.splitFlashCooldown = 200; // 플래시 간 최소 간격 (0.2초)
+    
   }
 
   setup() {
@@ -112,7 +121,11 @@ class Scene2 {
     this.isStopped = false;
     this.isFlashing = false;
     this.flashRectangles = [];
+    this.lastHighMidValue = 0;
+    this.splitFlashes = [];
+    this.lastSplitFlashTime = 0;
     this.initializeGrid();
+
   }
 
   startNewCycle() {
@@ -174,10 +187,38 @@ class Scene2 {
   }
 
   draw() {
+    console.log(this.fft.getEnergy("highMid"));
     if (!this.isSetupComplete) return;
 
     if (this.song.isPlaying()) {
       const currentTime = this.song.currentTime();
+      this.fft.analyze();
+      const highMidValue = this.fft.getEnergy("highMid");
+
+
+      // --- highMid 기반 배경 분할 플래시 트리거 ---
+      if (currentTime < 80.12) {
+        const now = millis();
+        if (this.lastHighMidValue < this.highMidThreshold && highMidValue >= this.highMidThreshold && now - this.lastSplitFlashTime > this.splitFlashCooldown) {
+          this.lastSplitFlashTime = now; // 마지막 트리거 시간 업데이트
+
+          // 왼쪽 플래시
+          this.splitFlashes.push({
+            side: 'left',
+            startTime: now,
+            duration: this.splitFlashDuration1,
+            color: color(random(255), random(255), random(255))
+          });
+          // 0.1초 후 오른쪽 플래시
+          this.splitFlashes.push({
+            side: 'right',
+            startTime: now + this.splitFlashDuration1,
+            duration: this.splitFlashDuration2,
+            color: color(random(255), random(255), random(255))
+          });
+        }
+      }
+      this.lastHighMidValue = highMidValue;
       const FADE_START_TIME = 96.0;
       const FADE_DURATION = 6.0;
       const FADE_END_TIME = FADE_START_TIME + FADE_DURATION;
@@ -193,6 +234,27 @@ class Scene2 {
       } else if (currentTime >= FADE_START_TIME && currentTime < FADE_END_TIME) {
         const alpha = map(currentTime, FADE_START_TIME, FADE_END_TIME, 255, 0);
         background(random(245, 255), alpha);
+      }
+
+      // --- 배경 분할 플래시 그리기 ---
+      if (this.splitFlashes.length > 0) {
+        const now = millis();
+        this.splitFlashes = this.splitFlashes.filter(flash => now < flash.startTime + flash.duration);
+
+        push();
+        noStroke();
+        rectMode(CORNER);
+        this.splitFlashes.forEach(flash => {
+          if (now >= flash.startTime) {
+            fill(flash.color);
+            if (flash.side === 'left') {
+              rect(0, random(height), width, height/random(5,40));
+            } else { // 'right'
+              rect(0, random(height), width, height/random(20,100));
+            }
+          }
+        });
+        pop();
       }
 
       if (currentTime >= this.zoomStartTimeTrigger && this.zoomState === 'idle') {
