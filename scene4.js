@@ -131,7 +131,7 @@ class Scene4 {
 
     // --- 글리치 효과 변수 ---
     this.lastMidValue = 0;
-    this.midThreshold = 168;
+    this.midThreshold = 172;
     this.isGlitching = false;
 
     // --- '8' 키 사각형 모드 변수 ---
@@ -226,6 +226,7 @@ class Scene4 {
     // 외부(다른 씬 또는 sketch.js)에 영향을 주지 않도록 격리합니다.
     push();
     // shrinking 상태에서는 잔상 효과를 위해 배경을 그리지 않습니다.
+    console.log(this.fft.getEnergy("mid"))
 
     if (this.transitionState !== 'shrinking') {
       background(255);
@@ -246,7 +247,7 @@ class Scene4 {
         setTimeout(() => {
           document.body.classList.remove('scene4-glitch-active');
           this.isGlitching = false;
-        }, 10); // 0.1초 (CSS 애니메이션 시간과 동일)
+        }, 100); // 0.1초 (CSS 애니메이션 시간과 동일)
       }
       this.lastMidValue = midValue;
     }

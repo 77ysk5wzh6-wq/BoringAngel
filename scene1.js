@@ -132,6 +132,18 @@ class Scene1 {
     this.arrowMoveOffsetX = 0;
     this.arrowMoveOffsetY = 0;
     
+    this.fonts = [
+      'Fira Mono',
+      'Geom',
+      'Bitcount Prop Single',
+      'EB Garamond',
+      'Cinzel Decorative',
+      'Shippori Mincho B1',
+      'Work Sans',
+      'Ballet'
+    ];
+    this.title1Chars = [];
+    this.title2Chars = [];
   }
 
   setup() {
@@ -214,6 +226,10 @@ class Scene1 {
     //스트레치 애니매이션 변수
     this.targetStretchedWidth = width - 100; // Scene2의 오선지 너비와 동일하게 설정
     this.targetSideStretchedWidth = width / 4;
+
+    // --- 타이틀 문자 배열 초기화 ---
+    this.title1Chars = "Boring".split('').map(char => ({ char, font: 'Fira Mono' }));
+    this.title2Chars = "Life".split('').map(char => ({ char, font: 'Fira Mono' }));
   }
 
   draw() {
@@ -256,6 +272,17 @@ class Scene1 {
       }
     }
 
+    // --- 마우스 움직임에 따른 타이틀 폰트 변경 ---
+    if (dist(pmouseX, pmouseY, mouseX, mouseY) > 1) { // 마우스가 1픽셀 이상 움직였을 때
+      if (this.titleAnimationState === 'idle') {
+        this.title1Chars.forEach(c => {
+          c.font = random(this.fonts);
+        });
+        this.title2Chars.forEach(c => {
+          c.font = random(this.fonts);
+        });
+      }
+    }
     if (this.song.isPlaying()) {
       // 초침 비트에 맞춰 중앙 원 색상 변경
    
@@ -745,14 +772,18 @@ class Scene1 {
     // 애니메이션이 끝나기 전까지 제목을 그립니다.
     if (this.titleAnimationState !== 'done') {
       push();
-      textAlign(CENTER, CENTER);
-      textFont('Fira Mono');
-      let title1 = "Synthetic";
-      let title2 = "Sublime";
-      let padding = 10;
-      let initialSize = 250;
+      textAlign(LEFT, CENTER);
+      let padding = 100;
+      let initialSize = 165;
       let baseSize = initialSize;
-      let textW = textWidth(title1);
+
+      // --- 폰트 크기 조정을 위한 너비 계산 ---
+      textSize(initialSize); // 먼저 기준 사이즈를 설정
+      let textW = this.title1Chars.reduce((acc, c) => {
+        textFont(c.font);
+        return acc + textWidth(c.char);
+      }, 0);
+
       if (textW > width - padding) {
         baseSize = initialSize * ((width - padding) / textW);
       }
@@ -774,20 +805,34 @@ class Scene1 {
         }
       }
 
-      fill(0, 0, 255, currentAlpha);
+      fill(0, currentAlpha);
       textSize(currentSize);
 
       // 애니메이션 중이 아닐 때만 깜빡임 효과 적용
       if (this.titleAnimationState === 'idle') {
-        if (floor(millis() / 500) % 2 === 0) {
-          text(title1, width / 2, height / 2 - currentSize / 1.1);
-          text(title2, width / 2, height / 2 + currentSize / 1.1);
+        // 1초 주기: 0.8초 표시, 0.2초 동안 한 번 깜빡임
+        const timeInSecond = millis() % 1000;
+        if (timeInSecond > 800) { // 0.8초 이후 0.2초 동안 숨김
+          pop();
+          return;
         }
-      } else { // 애니메이션 중에는 항상 표시
-        text(title1, width / 2, height / 2 - currentSize / 1.1);
-        text(title2, width / 2, height / 2 + currentSize / 1.1);
       }
 
+      // 타이틀 1 ("Boring") 그리기
+      let currentX1 = 50; // 왼쪽에서 50px 떨어진 위치에서 시작
+      this.title1Chars.forEach(c => {
+        textFont(c.font);
+        text(c.char, currentX1, height / 2 - currentSize / 1.9);
+        currentX1 += textWidth(c.char);
+      });
+
+      // 타이틀 2 ("Life") 그리기
+      let currentX2 = 50; // 왼쪽에서 50px 떨어진 위치에서 시작
+      this.title2Chars.forEach(c => {
+        textFont(c.font);
+        text(c.char, currentX2, height / 2 + currentSize / 1.9);
+        currentX2 += textWidth(c.char);
+      });
       pop();
     }
   }

@@ -99,6 +99,8 @@ our joy and suffering,
     // mid 값 기반 트리거를 위한 변수
     this.lastMidValue = 0;
     this.midThreshold = 163;
+    this.lastFlashTime = 0; // 마지막 플래시 트리거 시간
+    this.flashCooldown = 200; // 플래시 간 최소 간격 (0.2초)
 
     // highMid 값 기반 글리치 효과를 위한 변수
     this.lastHighMidValue = 0;
@@ -136,6 +138,7 @@ our joy and suffering,
     this.activeFlash = null; // 활성 플래시 객체 초기화
     this.lastHighMidValue = 0; // highMid 값 초기화
     this.isGlitching = false; // 글리치 상태 초기화
+    this.lastFlashTime = 0; // 플래시 시간 초기화
     this.lastGlitchTime = 0; // 글리치 시간 초기화
 
     // --- 배경 그리드 데이터 생성 ---
@@ -177,8 +180,9 @@ our joy and suffering,
       console.log('mid:', midValue); // mid 값 콘솔 출력
 
       // --- 연속 색상 플래시 트리거 ---
-      if (this.lastMidValue < this.midThreshold && midValue >= this.midThreshold) {
+      if (this.lastMidValue < this.midThreshold && midValue >= this.midThreshold && now - this.lastFlashTime > this.flashCooldown) {
         // 첫 번째 플래시
+        this.lastFlashTime = now; // 마지막 플래시 시간 업데이트
         this.flashes.push({
           startTime: now,
           duration: this.flashDuration,
