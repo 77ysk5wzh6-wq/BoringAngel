@@ -102,18 +102,19 @@ class Scene2 {
     this.splitFlashDuration2 = 50; // 오른쪽 플래시 지속 시간 (0.1초)
     this.lastSplitFlashTime = 0; // 마지막 플래시 트리거 시간
     this.splitFlashCooldown = 200; // 플래시 간 최소 간격 (0.2초)
-    
-    // --- 마우스 클릭으로 생성된 기호 관련 변수 ---
+
     this.clickedSymbols = []; // { x, y, symbol, size, alpha, color, isSoaring, soarStartTime }
     this.soarDuration = 700; // 솟구치는 애니메이션 지속 시간 (1.5초)
     this.soarDistance = 800; // 솟구치는 거리
     this.soarAllTriggered = false; // 80.12초에 모든 기호를 솟구치게 하는 트리거 플래그
 
+    this.scoreBuffer = null; // 오프스크린 버퍼
   }
 
   setup() {
     this.fft = new p5.FFT(0.8, 512);
     this.amp = new p5.Amplitude();
+    this.scoreBuffer = createGraphics(width, height); // 버퍼 생성
     this.enter(); // setup 시 enter 호출하여 상태 초기화
     this.isSetupComplete = true;
   }
@@ -134,6 +135,9 @@ class Scene2 {
     this.clickedSymbols = []; // 씬 진입 시 클릭된 기호 배열 초기화
     this.soarAllTriggered = false; // 씬 진입 시 트리거 플래그 리셋
 
+    if (this.scoreBuffer) {
+      this.scoreBuffer.clear();
+    }
   }
 
   startNewCycle() {
@@ -192,6 +196,16 @@ class Scene2 {
     setTimeout(() => {
       document.body.classList.remove('scene2-filter-active');
     }, 100);
+  }
+
+  updateScoreBuffer(quadrantIdx) {
+    if (!this.scoreBuffer) return;
+    this.scoreBuffer.clear();
+    // 1x1 mode assumes quadrantIdx 0
+    const data = this.quadrantData[quadrantIdx];
+    if (data) {
+      this.drawScoreElements(data, -1, 255, 1.0, false, false, this.scoreBuffer);
+    }
   }
 
   draw() {
@@ -276,9 +290,9 @@ class Scene2 {
           if (now >= flash.startTime) {
             fill(flash.color);
             if (flash.side === 'left') {
-              rect(0, random(height), width, height/random(5,40));
+              rect(0, random(height), width, height / random(5, 40));
             } else { // 'right'
-              rect(0, random(height), width, height/random(20,100));
+              rect(0, random(height), width, height / random(20, 100));
             }
           }
         });
@@ -443,6 +457,9 @@ class Scene2 {
           this.quadrantData[quadrantIdx] = this.createEmptyQuadrantData();
         }
         this.generateElementsForStave(staveToDrawOn, quadrantIdx);
+
+        // --- Update Buffer Here ---
+        this.updateScoreBuffer(quadrantIdx);
 
         if (this.zoomState !== 'idle') {
           this.generateBackgroundElements();
@@ -693,7 +710,7 @@ class Scene2 {
     });
   }
 
-  drawScoreElements(data, finaleElapsedTime, finaleAlpha, sizeMultiplier, staffOnly = false, isShaking = false) {
+  drawScoreElements(data, finaleElapsedTime, finaleAlpha, sizeMultiplier, staffOnly = false, isShaking = false, pg = null) {
     const isFinale = finaleElapsedTime >= 0;
 
     const allStaffYPositions = [];
@@ -701,20 +718,21 @@ class Scene2 {
       allStaffYPositions.push(100 + j * this.note_height * 25);
       allStaffYPositions.push(100 + this.note_height * 10 + j * this.note_height * 25);
     }
-    allStaffYPositions.forEach(yPos => this.drawStaff(yPos, 255));
+    allStaffYPositions.forEach(yPos => this.drawStaff(yPos, 255, pg));
 
-    strokeWeight(4);
-    stroke(0, 255);
+    // Staves lines logic
+    if (pg) { pg.strokeWeight(4); pg.stroke(0, 255); } else { strokeWeight(4); stroke(0, 255); }
     let startX = 50;
     let endX = width - 50;
     for (let j = 0; j < this.staff_num; j++) {
       let y1_top = 100 + j * this.note_height * 25 - 2 * this.note_height;
       let y2_bottom = 100 + this.note_height * 10 + j * this.note_height * 25 + 2 * this.note_height;
-      line(startX, y1_top, startX, y2_bottom);
-      line(endX, y1_top, endX, y2_bottom);
+      if (pg) { pg.line(startX, y1_top, startX, y2_bottom); pg.line(endX, y1_top, endX, y2_bottom); }
+      else { line(startX, y1_top, startX, y2_bottom); line(endX, y1_top, endX, y2_bottom); }
     }
 
     if (staffOnly) return;
+    if (!data) return; // Guard clause
 
     const drawElement = (element, drawFunc) => {
       let x = element.x, y = element.y;
@@ -743,87 +761,129 @@ class Scene2 {
 
     data.savedNotes.forEach(note => drawElement(note, (x, y) => {
       switch (note.type) {
-        case 'whole': this.wholeNote(x, y, note.barChance, note.dotChance, finaleAlpha, sizeMultiplier); break;
-        case 'half': this.halfNote(x, y, note.isRotated, note.barChance, note.dotChance, finaleAlpha, sizeMultiplier); break;
-        case 'quarter': this.quarterNote(x, y, note.isRotated, note.barChance, note.dotChance, finaleAlpha, sizeMultiplier); break;
-        case 'eighth': this.drawEighthNote(x, y, 53, finaleAlpha, sizeMultiplier); break;
-        case 'sixteenth': this.drawSixteenthNote(x, y, 53, finaleAlpha, sizeMultiplier); break;
+        case 'whole': this.wholeNote(x, y, note.barChance, note.dotChance, finaleAlpha, sizeMultiplier, pg); break;
+        case 'half': this.halfNote(x, y, note.isRotated, note.barChance, note.dotChance, finaleAlpha, sizeMultiplier, pg); break;
+        case 'quarter': this.quarterNote(x, y, note.isRotated, note.barChance, note.dotChance, finaleAlpha, sizeMultiplier, pg); break;
+        case 'eighth': this.drawEighthNote(x, y, 53, finaleAlpha, sizeMultiplier, pg); break;
+        case 'sixteenth': this.drawSixteenthNote(x, y, 53, finaleAlpha, sizeMultiplier, pg); break;
       }
     }));
 
     data.savedBeamNotes.forEach(beamData => drawElement(beamData, (x, y) => {
-      if (beamData.isRotated) { push(); translate(x, y); rotate(PI); beamData.beamNote.display(0, 0, finaleAlpha, sizeMultiplier, this.note_height); pop(); }
-      else { beamData.beamNote.display(x, y, finaleAlpha, sizeMultiplier, this.note_height); }
+      if (beamData.isRotated) {
+        if (pg) { pg.push(); pg.translate(x, y); pg.rotate(PI); beamData.beamNote.display(0, 0, finaleAlpha, sizeMultiplier, this.note_height, pg); pg.pop(); }
+        else { push(); translate(x, y); rotate(PI); beamData.beamNote.display(0, 0, finaleAlpha, sizeMultiplier, this.note_height, pg); pop(); }
+      }
+      else { beamData.beamNote.display(x, y, finaleAlpha, sizeMultiplier, this.note_height, pg); }
     }));
 
     data.savedRests.forEach(rest => drawElement(rest, (x, y) => {
-      this['draw' + rest.type.charAt(0).toUpperCase() + rest.type.slice(1) + 'Rest'](x, y, 30, finaleAlpha, sizeMultiplier);
+      this['draw' + rest.type.charAt(0).toUpperCase() + rest.type.slice(1) + 'Rest'](x, y, 30, finaleAlpha, sizeMultiplier, pg);
     }));
 
     data.savedTimeSignatures.forEach(timeSig => drawElement(timeSig, (x, y) => {
-      this['drawTimeSignature' + timeSig.type](x, y, 30, finaleAlpha, sizeMultiplier);
+      this['drawTimeSignature' + timeSig.type](x, y, 30, finaleAlpha, sizeMultiplier, pg);
     }));
 
     data.savedClefs.forEach(clef => drawElement(clef, (x, y) => {
-      this['draw' + clef.type.charAt(0).toUpperCase() + clef.type.slice(1) + 'Clef'](x, y, 30, finaleAlpha, sizeMultiplier);
+      this['draw' + clef.type.charAt(0).toUpperCase() + clef.type.slice(1) + 'Clef'](x, y, 30, finaleAlpha, sizeMultiplier, pg);
     }));
 
     data.savedSymbols.forEach(symbol => drawElement(symbol, (x, y) => {
-      this['draw' + symbol.type.charAt(0).toUpperCase() + symbol.type.slice(1).toLowerCase()](x, y, 30, finaleAlpha, sizeMultiplier);
+      this['draw' + symbol.type.charAt(0).toUpperCase() + symbol.type.slice(1).toLowerCase()](x, y, 30, finaleAlpha, sizeMultiplier, pg);
     }));
   }
 
-  wholeNote(x, y, barChance, dotChance, alpha = 255, sizeMultiplier = 1.0) {
-    this.drawNoteWithBravura(this.BRAVURA_SYMBOLS.WHOLE_NOTE, x, y, 53, alpha, sizeMultiplier);
+  wholeNote(x, y, barChance, dotChance, alpha = 255, sizeMultiplier = 1.0, pg = null) {
+    this.drawNoteWithBravura(this.BRAVURA_SYMBOLS.WHOLE_NOTE, x, y, 53, alpha, sizeMultiplier, pg);
   }
-  halfNote(x, y, isRotated, barChance, dotChance, alpha = 255, sizeMultiplier = 1.0) {
-    this.drawNoteWithBravura(this.BRAVURA_SYMBOLS.HALF_NOTE, x, y, 53, alpha, sizeMultiplier);
+  halfNote(x, y, isRotated, barChance, dotChance, alpha = 255, sizeMultiplier = 1.0, pg = null) {
+    this.drawNoteWithBravura(this.BRAVURA_SYMBOLS.HALF_NOTE, x, y, 53, alpha, sizeMultiplier, pg);
   }
-  quarterNote(x, y, isRotated, barChance, dotChance, alpha = 255, sizeMultiplier = 1.0) {
-    this.drawNoteWithBravura(this.BRAVURA_SYMBOLS.QUARTER_NOTE, x, y, 53, alpha, sizeMultiplier);
+  quarterNote(x, y, isRotated, barChance, dotChance, alpha = 255, sizeMultiplier = 1.0, pg = null) {
+    this.drawNoteWithBravura(this.BRAVURA_SYMBOLS.QUARTER_NOTE, x, y, 53, alpha, sizeMultiplier, pg);
   }
 
-  drawNoteWithBravura(symbol, x, y, size = 53, alpha = 255, sizeMultiplier = 1.0) {
-    if (this.bravuraFont) {
-      textFont(this.bravuraFont);
+  drawNoteWithBravura(symbol, x, y, size = 53, alpha = 255, sizeMultiplier = 1.0, pg = null) {
+    const ctx = pg || this; // Use global scope (this in instance/mixed) if pg not provided. Actually for global p5, just use global functions.
+    // Correct way for global mode mixed with pg:
+    // If pg is null, call global functions.
+
+    if (pg) {
+      if (this.bravuraFont) pg.textFont(this.bravuraFont);
+      pg.textAlign(CENTER, CENTER);
+      pg.textSize(size * sizeMultiplier * 0.9);
+      pg.noStroke();
+      pg.fill(0, alpha);
+      pg.text(symbol, x, y);
+    } else {
+      if (this.bravuraFont) textFont(this.bravuraFont);
+      textAlign(CENTER, CENTER);
+      textSize(size * sizeMultiplier * 0.9);
+      noStroke();
+      fill(0, alpha);
+      text(symbol, x, y);
     }
-    textAlign(CENTER, CENTER);
-    textSize(size * sizeMultiplier * 0.9); // 10% 크기 감소 적용
-    noStroke();
-    fill(0, alpha);
-    text(symbol, x, y);
   }
 
-  drawStaff(y, alpha = 255) { stroke(0, alpha); strokeWeight(1); let startX = 50; let endX = width - 50; let lineSpacing = this.note_height; for (let i = 0; i < 5; i++) { let y1 = y - (2 * lineSpacing) + (i * lineSpacing); line(startX, y1, endX, y1); } }
-  drawTrebleClef(x, y, size = 50, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.TREBLE_CLEF, x, y); }
-  drawBassClef(x, y, size = 50, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier * 0.9); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.BASS_CLEF, x, y); }
-  drawWholeRest(x, y, size = 20, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier * 0.9); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.WHOLE_REST, x, y); }
-  drawHalfRest(x, y, size = 20, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier * 0.9); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.HALF_REST, x, y); }
-  drawQuarterRest(x, y, size = 20, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier * 0.9); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.QUARTER_REST, x, y); }
-  drawEighthRest(x, y, size = 20, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier * 0.9); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.EIGHTH_REST, x, y); }
-  drawSixteenthRest(x, y, size = 20, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier * 0.9); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.SIXTEENTH_REST, x, y); }
-  drawTimeSignature44(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier * 0.9); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.TIME_4_4, x, y); }
-  drawTimeSignature68(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier * 0.9); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.TIME_6_8, x, y); }
-  drawFlat(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier * 0.9); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.FLAT, x, y); }
-  drawSharp(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier * 0.9); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.SHARP, x, y); }
-  drawNatural(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier * 0.9); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.NATURAL, x, y); }
-  drawFermata(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier * 0.9); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.FERMATA, x, y); }
-  drawAccent(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier * 0.9); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.ACCENT, x, y); }
-  drawStaccato(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier * 0.9); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.STACCATO, x, y); }
-  drawTenuto(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier * 0.9); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.TENUTO, x, y); }
-  drawTrill(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier * 0.9); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.TRILL, x, y); }
-  drawMordent(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier * 0.9); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.MORDENT, x, y); }
-  drawTurn(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier * 0.9); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.TURN, x, y); }
-  drawCrescendo(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier * 0.9); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.CRESCENDO, x, y); }
-  drawDecrescendo(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier * 0.9); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.DECRESCENDO, x, y); }
-  drawPedal_mark(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier * 0.9); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.PEDAL_MARK, x, y); }
-  drawDouble_barline(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier * 0.9); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.DOUBLE_BARLINE, x, y); }
-  drawSfz(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier * 0.9); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.SFZ, x, y); }
-  drawArpeggio(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier * 0.9); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.ARPEGGIO, x, y); }
-  drawSegno(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier * 0.9); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.SEGNO, x, y); }
-  drawTime_c(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier * 0.9); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.TIME_C, x, y); }
-  drawEighthNote(x, y, size = 20, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier * 0.9); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.EIGHTH_NOTE, x, y); }
-  drawSixteenthNote(x, y, size = 20, alpha = 255, sizeMultiplier = 1.0) { if (this.bravuraFont) { textFont(this.bravuraFont); } textAlign(CENTER, CENTER); textSize(size * sizeMultiplier * 0.9); noStroke(); fill(0, alpha); text(this.BRAVURA_SYMBOLS.SIXTEENTH_NOTE, x, y); }
+  drawStaff(y, alpha = 255, pg = null) {
+    if (pg) {
+      pg.stroke(0, alpha); pg.strokeWeight(1);
+      let startX = 50; let endX = width - 50; let lineSpacing = this.note_height;
+      for (let i = 0; i < 5; i++) { let y1 = y - (2 * lineSpacing) + (i * lineSpacing); pg.line(startX, y1, endX, y1); }
+    } else {
+      stroke(0, alpha); strokeWeight(1);
+      let startX = 50; let endX = width - 50; let lineSpacing = this.note_height;
+      for (let i = 0; i < 5; i++) { let y1 = y - (2 * lineSpacing) + (i * lineSpacing); line(startX, y1, endX, y1); }
+    }
+  }
+
+  drawTrebleClef(x, y, size = 50, alpha = 255, sizeMultiplier = 1.0, pg = null) {
+    this.drawSymbolHelper(this.BRAVURA_SYMBOLS.TREBLE_CLEF, x, y, size, alpha, sizeMultiplier, pg);
+  }
+  drawBassClef(x, y, size = 50, alpha = 255, sizeMultiplier = 1.0, pg = null) {
+    this.drawSymbolHelper(this.BRAVURA_SYMBOLS.BASS_CLEF, x, y, size * 0.9, alpha, sizeMultiplier, pg);
+  }
+  drawWholeRest(x, y, size = 20, alpha = 255, sizeMultiplier = 1.0, pg = null) {
+    this.drawSymbolHelper(this.BRAVURA_SYMBOLS.WHOLE_REST, x, y, size * 0.9, alpha, sizeMultiplier, pg);
+  }
+
+  // Helper to reduce duplication for simple symbols
+  drawSymbolHelper(symbol, x, y, size, alpha, sizeMultiplier, pg) {
+    if (pg) {
+      if (this.bravuraFont) pg.textFont(this.bravuraFont);
+      pg.textAlign(CENTER, CENTER); pg.textSize(size * sizeMultiplier); pg.noStroke(); pg.fill(0, alpha); pg.text(symbol, x, y);
+    } else {
+      if (this.bravuraFont) textFont(this.bravuraFont);
+      textAlign(CENTER, CENTER); textSize(size * sizeMultiplier); noStroke(); fill(0, alpha); text(symbol, x, y);
+    }
+  }
+  drawHalfRest(x, y, size = 20, alpha = 255, sizeMultiplier = 1.0, pg = null) { this.drawSymbolHelper(this.BRAVURA_SYMBOLS.HALF_REST, x, y, size * 0.9, alpha, sizeMultiplier, pg); }
+  drawQuarterRest(x, y, size = 20, alpha = 255, sizeMultiplier = 1.0, pg = null) { this.drawSymbolHelper(this.BRAVURA_SYMBOLS.QUARTER_REST, x, y, size * 0.9, alpha, sizeMultiplier, pg); }
+  drawEighthRest(x, y, size = 20, alpha = 255, sizeMultiplier = 1.0, pg = null) { this.drawSymbolHelper(this.BRAVURA_SYMBOLS.EIGHTH_REST, x, y, size * 0.9, alpha, sizeMultiplier, pg); }
+  drawSixteenthRest(x, y, size = 20, alpha = 255, sizeMultiplier = 1.0, pg = null) { this.drawSymbolHelper(this.BRAVURA_SYMBOLS.SIXTEENTH_REST, x, y, size * 0.9, alpha, sizeMultiplier, pg); }
+  drawTimeSignature44(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0, pg = null) { this.drawSymbolHelper(this.BRAVURA_SYMBOLS.TIME_4_4, x, y, size * 0.9, alpha, sizeMultiplier, pg); }
+  drawTimeSignature68(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0, pg = null) { this.drawSymbolHelper(this.BRAVURA_SYMBOLS.TIME_6_8, x, y, size * 0.9, alpha, sizeMultiplier, pg); }
+  drawFlat(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0, pg = null) { this.drawSymbolHelper(this.BRAVURA_SYMBOLS.FLAT, x, y, size * 0.9, alpha, sizeMultiplier, pg); }
+  drawSharp(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0, pg = null) { this.drawSymbolHelper(this.BRAVURA_SYMBOLS.SHARP, x, y, size * 0.9, alpha, sizeMultiplier, pg); }
+  drawNatural(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0, pg = null) { this.drawSymbolHelper(this.BRAVURA_SYMBOLS.NATURAL, x, y, size * 0.9, alpha, sizeMultiplier, pg); }
+  drawFermata(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0, pg = null) { this.drawSymbolHelper(this.BRAVURA_SYMBOLS.FERMATA, x, y, size * 0.9, alpha, sizeMultiplier, pg); }
+  drawAccent(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0, pg = null) { this.drawSymbolHelper(this.BRAVURA_SYMBOLS.ACCENT, x, y, size * 0.9, alpha, sizeMultiplier, pg); }
+  drawStaccato(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0, pg = null) { this.drawSymbolHelper(this.BRAVURA_SYMBOLS.STACCATO, x, y, size * 0.9, alpha, sizeMultiplier, pg); }
+  drawTenuto(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0, pg = null) { this.drawSymbolHelper(this.BRAVURA_SYMBOLS.TENUTO, x, y, size * 0.9, alpha, sizeMultiplier, pg); }
+  drawTrill(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0, pg = null) { this.drawSymbolHelper(this.BRAVURA_SYMBOLS.TRILL, x, y, size * 0.9, alpha, sizeMultiplier, pg); }
+  drawMordent(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0, pg = null) { this.drawSymbolHelper(this.BRAVURA_SYMBOLS.MORDENT, x, y, size * 0.9, alpha, sizeMultiplier, pg); }
+  drawTurn(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0, pg = null) { this.drawSymbolHelper(this.BRAVURA_SYMBOLS.TURN, x, y, size * 0.9, alpha, sizeMultiplier, pg); }
+  drawCrescendo(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0, pg = null) { this.drawSymbolHelper(this.BRAVURA_SYMBOLS.CRESCENDO, x, y, size * 0.9, alpha, sizeMultiplier, pg); }
+  drawDecrescendo(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0, pg = null) { this.drawSymbolHelper(this.BRAVURA_SYMBOLS.DECRESCENDO, x, y, size * 0.9, alpha, sizeMultiplier, pg); }
+  drawPedal_mark(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0, pg = null) { this.drawSymbolHelper(this.BRAVURA_SYMBOLS.PEDAL_MARK, x, y, size * 0.9, alpha, sizeMultiplier, pg); }
+  drawDouble_barline(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0, pg = null) { this.drawSymbolHelper(this.BRAVURA_SYMBOLS.DOUBLE_BARLINE, x, y, size * 0.9, alpha, sizeMultiplier, pg); }
+  drawSfz(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0, pg = null) { this.drawSymbolHelper(this.BRAVURA_SYMBOLS.SFZ, x, y, size * 0.9, alpha, sizeMultiplier, pg); }
+  drawArpeggio(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0, pg = null) { this.drawSymbolHelper(this.BRAVURA_SYMBOLS.ARPEGGIO, x, y, size * 0.9, alpha, sizeMultiplier, pg); }
+  drawSegno(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0, pg = null) { this.drawSymbolHelper(this.BRAVURA_SYMBOLS.SEGNO, x, y, size * 0.9, alpha, sizeMultiplier, pg); }
+  drawTime_c(x, y, size = 30, alpha = 255, sizeMultiplier = 1.0, pg = null) { this.drawSymbolHelper(this.BRAVURA_SYMBOLS.TIME_C, x, y, size * 0.9, alpha, sizeMultiplier, pg); }
+  drawEighthNote(x, y, size = 20, alpha = 255, sizeMultiplier = 1.0, pg = null) { this.drawSymbolHelper(this.BRAVURA_SYMBOLS.EIGHTH_NOTE, x, y, size * 0.9, alpha, sizeMultiplier, pg); }
+  drawSixteenthNote(x, y, size = 20, alpha = 255, sizeMultiplier = 1.0, pg = null) { this.drawSymbolHelper(this.BRAVURA_SYMBOLS.SIXTEENTH_NOTE, x, y, size * 0.9, alpha, sizeMultiplier, pg); }
 
   keyPressed() {
     if (key === ' ') {
@@ -924,14 +984,14 @@ class BeamNote {
     else this.beamCount = 0;
   }
 
-  display(drawX = this.x, drawY = this.y, alpha = 255, sizeMultiplier = 1.0, note_height) {
+  display(drawX = this.x, drawY = this.y, alpha = 255, sizeMultiplier = 1.0, note_height, pg = null) {
     const note_width = 16.5;
     const note_stem = 46;
 
-    stroke(0, alpha);
+    if (pg) pg.stroke(0, alpha); else stroke(0, alpha);
 
-    push();
-    translate(drawX - this.x, drawY - this.y);
+    if (pg) pg.push(); else push();
+    if (pg) pg.translate(drawX - this.x, drawY - this.y); else translate(drawX - this.x, drawY - this.y);
 
     let allNotes = [...this.column1Notes, ...this.column2Notes];
     let column1StemEnds = this.column1Notes.map(note => note.y + (note.stemDirection * note_stem * sizeMultiplier));
@@ -940,48 +1000,52 @@ class BeamNote {
     let maxStem2 = column2StemEnds.length > 0 ? max(column2StemEnds) : 0;
 
     this.column1Notes.forEach(note => {
-      this.drawStem(note.x, note.y, note.stemDirection, alpha, sizeMultiplier, note_width, maxStem1);
+      this.drawStem(note.x, note.y, note.stemDirection, alpha, sizeMultiplier, note_width, maxStem1, pg);
     });
     this.column2Notes.forEach(note => {
-      this.drawStem(note.x, note.y, note.stemDirection, alpha, sizeMultiplier, note_width, maxStem2);
+      this.drawStem(note.x, note.y, note.stemDirection, alpha, sizeMultiplier, note_width, maxStem2, pg);
     });
-    
+
     if (this.beamCount > 0) {
-      this.drawBeams(alpha, sizeMultiplier, note_width, maxStem1, maxStem2);
+      this.drawBeams(alpha, sizeMultiplier, note_width, maxStem1, maxStem2, pg);
     }
-    
+
     [...this.column1Notes, ...this.column2Notes].forEach(note => {
-      this.drawNoteHead(note.x, note.y, alpha, sizeMultiplier, note_width, note_height);
+      this.drawNoteHead(note.x, note.y, alpha, sizeMultiplier, note_width, note_height, pg);
     });
 
-    pop();
+    if (pg) pg.pop(); else pop();
   }
 
-  drawNoteHead(x, y, alpha, sizeMultiplier, note_width, note_height) {
-    push();
-    translate(x, y);
-    rotate(-PI / 8);
-    fill(0, alpha);
-    ellipse(0, 0, note_width * sizeMultiplier*1.1, note_height * sizeMultiplier);
-    pop();
+  drawNoteHead(x, y, alpha, sizeMultiplier, note_width, note_height, pg = null) {
+    if (pg) pg.push(); else push();
+    if (pg) pg.translate(x, y); else translate(x, y);
+    if (pg) pg.rotate(-PI / 8); else rotate(-PI / 8);
+    if (pg) pg.fill(0, alpha); else fill(0, alpha);
+    if (pg) pg.ellipse(0, 0, note_width * sizeMultiplier * 1.1, note_height * sizeMultiplier); else ellipse(0, 0, note_width * sizeMultiplier * 1.1, note_height * sizeMultiplier);
+    if (pg) pg.pop(); else pop();
   }
 
-  drawStem(x, y, direction, alpha, sizeMultiplier, note_width, beamY) {
-    strokeWeight(1.6 * sizeMultiplier);
-    stroke(0, alpha);
-    line(x - (note_width / 2 * sizeMultiplier) + (0.3 * sizeMultiplier), y, x - (note_width / 2 * sizeMultiplier), beamY);
+  drawStem(x, y, direction, alpha, sizeMultiplier, note_width, beamY, pg = null) {
+    if (pg) pg.strokeWeight(1.6 * sizeMultiplier); else strokeWeight(1.6 * sizeMultiplier);
+    if (pg) pg.stroke(0, alpha); else stroke(0, alpha);
+    if (pg) pg.line(x - (note_width / 2 * sizeMultiplier) + (0.3 * sizeMultiplier), y, x - (note_width / 2 * sizeMultiplier), beamY);
+    else line(x - (note_width / 2 * sizeMultiplier) + (0.3 * sizeMultiplier), y, x - (note_width / 2 * sizeMultiplier), beamY);
   }
 
-  drawBeams(alpha, sizeMultiplier, note_width, beamY1, beamY2) {
+  drawBeams(alpha, sizeMultiplier, note_width, beamY1, beamY2, pg = null) {
     let allNotes = [...this.column1Notes, ...this.column2Notes];
 
     for (let i = 0; i < this.beamCount; i++) {
       let beamStartX = min(allNotes.map(note => note.x)) - (note_width / 2 * sizeMultiplier);
       let beamEndX = max(allNotes.map(note => note.x)) - (note_width / 2 * sizeMultiplier);
       let beamThickness = 3 * sizeMultiplier;
-      fill(0, alpha);
-      noStroke();
-      quad(beamStartX, beamY1, beamStartX, beamY1 + beamThickness, beamEndX, beamY2 + beamThickness, beamEndX, beamY2);
+
+      if (pg) pg.fill(0, alpha); else fill(0, alpha);
+      if (pg) pg.noStroke(); else noStroke();
+      if (pg) pg.quad(beamStartX, beamY1, beamStartX, beamY1 + beamThickness, beamEndX, beamY2 + beamThickness, beamEndX, beamY2);
+      else quad(beamStartX, beamY1, beamStartX, beamY1 + beamThickness, beamEndX, beamY2 + beamThickness, beamEndX, beamY2);
+
       beamY1 -= 7 * sizeMultiplier;
       beamY2 -= 7 * sizeMultiplier;
     }

@@ -252,8 +252,9 @@ our joy and suffering,
           this.drawBackgroundGrid(true);
         }
 
-        // 모든 단어가 화면에 표시된 후
-        if (this.allWordsDisplayed) {
+        // 모든 단어가 표시되었지만, 요가 이모지가 시작되기 전까지는 drawBackgroundGrid가 
+        // 인터랙션(클릭시 이동)을 담당하므로 중복해서 그리지 않도록 합니다.
+        if (this.allWordsDisplayed && currentTime >= this.YOGA_EMOJI_START_TIME) {
           this.drawFullPoem();
         }
         // 단어 표시가 진행 중일 때
@@ -674,6 +675,7 @@ our joy and suffering,
   drawHighlightForWord(bounds, elapsedTime) {
     const cellWidth = width / this.gridCols;
     const cellHeight = height / this.gridRows;
+    const now = millis();
 
     // 단어를 줄(row)별로 그룹화합니다.
     const charsByRow = {};
@@ -688,28 +690,55 @@ our joy and suffering,
     // 너비가 줄어드는 애니메이션을 위한 진행률 계산
     const progress = constrain(elapsedTime / this.highlightFadeDuration, 0, 1);
 
-    // 각 줄에 대해 연속된 하이라이트 사각형을 그립니다.
+    // 각 줄에 대해 글자별로 하이라이트를 그립니다.
     for (const row in charsByRow) {
       const indicesInRow = charsByRow[row];
       if (indicesInRow.length > 0) {
-        const firstIndex = indicesInRow[0];
-        const lastIndex = indicesInRow[indicesInRow.length - 1];
-
-        const startCol = firstIndex % this.gridCols; // 줄의 첫 글자 열
-        const endCol = lastIndex % this.gridCols;   // 줄의 마지막 글자 열
-        const numCharsInRow = endCol - startCol + 1;
 
         // 진행률에 따라 표시할 셀의 개수를 불연속적으로 계산 (ceil로 끊어지는 효과)
-        const numVisibleChars = ceil((1.0 - progress) * numCharsInRow);
-        if (numVisibleChars <= 0) continue; // 그릴 셀이 없으면 건너뜁니다.
+        const numVisibleChars = ceil((1.0 - progress) * indicesInRow.length);
+        if (numVisibleChars <= 0) continue;
 
-        const currentWidth = numVisibleChars * cellWidth;
-        const x = startCol * cellWidth + currentWidth / 2; // 중앙 기준 x좌표
-        const y = parseInt(row) * cellHeight + cellHeight / 2;
-        rect(x, y, currentWidth, cellHeight);
+        let lastCellX = 0;
+        let lastCellY = 0;
+
+        for (let k = 0; k < numVisibleChars; k++) {
+          const gridIndex = indicesInRow[k];
+          const cell = this.finalGridState[gridIndex];
+          const col = gridIndex % this.gridCols;
+          const r = floor(gridIndex / this.gridCols);
+
+          let x = col * cellWidth + cellWidth / 2;
+          let y = r * cellHeight + cellHeight / 2;
+
+          // --- 글자 이동 애니메이션 적용 (drawBackgroundGrid와 동일한 로직) ---
+          if (cell.pushData && cell.pushData.active) {
+            const elapsedPush = now - cell.pushData.startTime;
+            if (elapsedPush < cell.pushData.duration) {
+              const pushProgress = elapsedPush / cell.pushData.duration;
+              const pushOutTime = 0.1;
+              let pushAmount = 0;
+              if (pushProgress < pushOutTime) {
+                const t = pushProgress / pushOutTime;
+                pushAmount = sin(t * HALF_PI);
+              } else {
+                const t = (pushProgress - pushOutTime) / (1 - pushOutTime);
+                pushAmount = (1 - t) * (1 - t);
+              }
+              x += cell.pushData.targetX * pushAmount;
+              y += cell.pushData.targetY * pushAmount;
+            }
+          }
+
+          rect(x, y, cellWidth, cellHeight);
+          lastCellX = x;
+          lastCellY = y;
+        }
+
+        // 마지막 글자 옆에 커서 그리기 (함께 움직임)
         push();
         fill(0);
-        rect(x + currentWidth / 2, y, 10, cellHeight);
+        rect(lastCellX + cellWidth / 2 + 5, lastCellY, 10, cellHeight);
         pop();
       }
     }

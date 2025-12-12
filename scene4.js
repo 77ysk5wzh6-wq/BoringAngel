@@ -49,7 +49,7 @@ class Scene4 {
         font: 'Shippori Mincho',
         glyphs: "･ . , : ; ° ゛ ゝ ゞ ' ` へ と こ に す れ ね む ぬ め み @ #".split(' '),
         style: {
-          bgColor: '#0a0a2a', // Dark Blue
+          bgColor: '#ff0800', // Midnight Blue
           fgColor: '#e0ffff', // Cyan-ish White
           mode: 'CLEAN'
         }
@@ -59,7 +59,7 @@ class Scene4 {
         font: 'Noto Sans TC',
         glyphs: "･ . , : ; ° ' ` 之 乃 久 小 川 心 光 花 面 重 舞 龍 夢 難 ".split(' '),
         style: {
-          bgColor: '#000000', // Black
+          bgColor: '#005f00', // Deep Forest Green
           fgColor: '#00FF41', // Matrix Green
           mode: 'MATRIX'
         }
@@ -70,8 +70,8 @@ class Scene4 {
         // 아랍어는 오른쪽에서 왼쪽으로 쓰므로, 시각적 밀도에 맞춰 수동으로 정렬합니다.
         glyphs: ". · , : ; ° ' ` ـ ا د ر ل م ن ب ج خ ع غ ف ه ي ش ص ض ط ظ".split(' '),
         style: {
-          bgColor: '#000000', // Black
-          fgColor: '#DAA520', // Gold
+          bgColor: '#2b0000', // Deep Maroon
+          fgColor: '#FFD700', // Gold
           mode: 'GOLD'
         }
       },
@@ -80,8 +80,8 @@ class Scene4 {
         font: 'sans-serif', // 기본 산세리프 폰트 사용
         glyphs: "· . , ; : ㄴ ㄱ ㄷ ㄹ ㅎ 아 가 나 파 화 활".split(' '),
         style: {
-          bgColor: '#050505', // Almost Black
-          fgColor: '#DCDCDC', // Ginsboro (Sophisticated Silver-White)
+          bgColor: '#6c93ff', // Charcoal / Dark Gray (Lighter than black)
+          fgColor: '#F5F5F5', // White Smoke
           mode: 'MINIMAL'
         }
       },
@@ -92,7 +92,7 @@ class Scene4 {
         glyphs: ['◌', '𝅝', '𝀓', '𝀄', '♩', '♪', '𝁉', '♫', '♬', '♯', '𝄢', '𝇚', '𝅘𝅥𝅲', '𝄡', '𝄞', '𝄇'],
         style: {
           bgColor: '#FDF5E6', // Parchment
-          fgColor: '#000000', // Black
+          fgColor: '#00000082', // Black
           mode: 'SHEET'
         }
       },
@@ -101,8 +101,8 @@ class Scene4 {
         type: 'shapes', // 도형 기반 세트임을 나타내는 타입
         shapes: ['square', 'circle', 'triangle', 'x-ellipse'],
         style: {
-          bgColor: '#FFFFFF',
-          fgColor: '#000000',
+          bgColor: '#c9e6ffff', // Alice Blue
+          fgColor: '#a0305fff',
           mode: 'SHAPES'
         }
       }
@@ -165,7 +165,7 @@ class Scene4 {
     this.jumpBeatDuration = 60000 / this.jumpBpm;
     this.lastJumpTime = 0;
     this.jumpAnimationDuration = 200; // 0.2초
-    this.baseJumpProbability = 0.01; // 5%
+    this.baseJumpProbability = 0.05; // 5%
 
     this.lastHighlightColorChangeTime = 0; // 하이라이트 색상 변경 마지막 시간
     this.highlightColorChangeInterval = 300; // 0.3초마다 색상 변경
@@ -324,14 +324,62 @@ class Scene4 {
       this.highlightColorIndex = 0;
     }
 
-    // --- Chaotic Switching during Gathering Start (0 ~ 2 seconds) ---
-    if (currentTime >= this.GATHER_START_TIME && currentTime < this.GATHER_START_TIME + 2) {
-      if (now - this.lastChaosSwitchTime > 100) { // 0.1초마다
+    // --- Accelerating Auto-Switching before Gathering Start ---
+    if (currentTime < this.GATHER_START_TIME && this.transitionState === 'playing') {
+      const timeRemaining = this.GATHER_START_TIME - currentTime;
+      // 10초 전부터 가속: 1000ms -> 70ms
+      let targetInterval = 1000;
+      if (timeRemaining <= 10) {
+        let p = constrain(1 - (timeRemaining / 10), 0, 1); // 0 -> 1 (closer to start)
+        targetInterval = map(p * p, 0, 1, 1000, 70); // Accelerating curve
+      }
+
+      if (now - this.lastChaosSwitchTime > targetInterval) {
         this.lastChaosSwitchTime = now;
+
+        // When faster than 0.7s (700ms), only cycle between Korean, Music, Japanese
+        if (targetInterval <= 100) {
+          const restrictedNames = ['Music', 'Japanese'];
+          const restrictedIndices = this.languageSets
+            .map((s, i) => ({ name: s.name, index: i }))
+            .filter(s => restrictedNames.includes(s.name))
+            .map(s => s.index);
+
+          let newIndex = this.currentAsciiSetIndex;
+          // Prevent same consecutive
+          while (newIndex === this.currentAsciiSetIndex) {
+            newIndex = random(restrictedIndices);
+          }
+          this.currentAsciiSetIndex = newIndex;
+        } else {
+          let newIndex = this.currentAsciiSetIndex;
+          while (newIndex === this.currentAsciiSetIndex) {
+            newIndex = floor(random(this.languageSets.length));
+          }
+          this.currentAsciiSetIndex = newIndex;
+        }
+
+        const newSet = this.languageSets[this.currentAsciiSetIndex];
+        this.updateGridForNewSet(newSet);
+        this.prepareMorphTarget();
+      }
+    }
+
+    // --- Chaotic Switching during Gathering (until End) ---
+    // This phase is always fast (70ms), so it always uses the restricted set.
+    if (currentTime >= this.GATHER_START_TIME && currentTime < this.GATHER_END_TIME) {
+      if (now - this.lastChaosSwitchTime > 70) { // 0.1초마다
+        this.lastChaosSwitchTime = now;
+
+        const restrictedNames = ['Korean', 'Music', 'Japanese'];
+        const restrictedIndices = this.languageSets
+          .map((s, i) => ({ name: s.name, index: i }))
+          .filter(s => restrictedNames.includes(s.name))
+          .map(s => s.index);
 
         let newIndex = this.currentAsciiSetIndex;
         while (newIndex === this.currentAsciiSetIndex) {
-          newIndex = floor(random(this.languageSets.length));
+          newIndex = random(restrictedIndices);
         }
         this.currentAsciiSetIndex = newIndex;
 
@@ -342,8 +390,8 @@ class Scene4 {
       }
     }
 
-    // --- Lock to Fira Mono (ASCII) after Gathering starts + 2 seconds ---
-    if (currentTime >= this.GATHER_START_TIME + 2 && !this.isLockedToDefault) {
+    // --- Lock to Fira Mono (ASCII) after Gathering Ends ---
+    if (currentTime >= this.GATHER_END_TIME && !this.isLockedToDefault) {
       this.isLockedToDefault = true;
       this.currentAsciiSetIndex = 0; // Force ASCII
       const newSet = this.languageSets[this.currentAsciiSetIndex];
@@ -672,7 +720,9 @@ class Scene4 {
 
         if (currentSet.type === 'shapes') {
           // 도형 세트일 경우, 밝기에 따라 도형 크기를 조절합니다.
-          cell.shapeSize = map(brightness, 0, 255, this.cellSize, 0);
+          // 대비를 높이기 위해 clamp 적용 (어두운 부분은 더 확실히 크고, 밝은 부분은 더 확실히 작게/없게)
+          const contrastBrightness = constrain(map(brightness, 50, 200, 0, 1), 0, 1);
+          cell.shapeSize = lerp(this.cellSize, 0, contrastBrightness);
           cell.targetChar = ' '; // 문자는 사용하지 않음
         } else {
           // 문자 세트일 경우, 밝기에 따라 문자를 선택합니다.
@@ -756,6 +806,7 @@ class Scene4 {
       }
 
       this.transitionState = 'playing';
+      this.playStartTime = millis(); // Record start time of playing phase
       // --- 중앙으로 모이는 애니메이션 준비 ---
       for (const cell of this.gridData) {
         const startTime = this.GATHER_START_TIME + random(this.GATHER_START_RANDOM_DURATION);
@@ -894,19 +945,17 @@ class Scene4 {
     // Background Color Logic
     let bgColor = color(style.bgColor);
 
-    const bgAnimElapsedTime = now - this.sweepStartTime;
-    // 배경 전환 효과 (Sweep Effect)가 진행 중일 때는 흰색 등 다른 색과 블렌딩 가능하지만,
-    // 극적인 변화를 위해 현재 스타일 색상을 기본으로 하되, 전환 효과는 오버레이 형식으로 할 수도 있음.
-    // 기존 로직 유지하되, bgColor를 동적으로 할당.
-    if (bgAnimElapsedTime >= 0) {
-      if (bgAnimElapsedTime < this.bgHoldDuration) {
-        // bgColor = 180; // Existing logic override
-      } else if (bgAnimElapsedTime < this.bgHoldDuration + this.bgFadeDuration) {
-        // bgColor = map... // Existing logic override
+    // --- Background Alpha Fadeout ---
+    if (songTime >= this.GATHER_START_TIME) {
+      const fadeEndTime = this.GATHER_END_TIME - 1;
+      if (songTime < fadeEndTime) {
+        const alpha = map(songTime, this.GATHER_START_TIME, fadeEndTime, 255, 0);
+        bgColor.setAlpha(constrain(alpha, 0, 255));
+      } else {
+        bgColor.setAlpha(0); // Fully transparent
       }
     }
-    // For now, simplify to just use the new style bgColor, but keep sweep effect if truly needed effectively. 
-    // Given request "dramatic change", pure color switch is better.
+
     background(bgColor);
 
     textAlign(CENTER, CENTER);
@@ -994,8 +1043,31 @@ class Scene4 {
           fill(style.fgColor);
         }
 
-        textFont(cell.font);
-        text(cell.targetChar, currentX, currentY);
+        if (currentSet.type === 'shapes') {
+          noStroke();
+          const s = cell.shapeSize;
+          if (s > 0.5) {
+            if (cell.shape === 'square') {
+              rectMode(CENTER);
+              rect(currentX, currentY, s, s);
+            } else if (cell.shape === 'circle') {
+              ellipse(currentX, currentY, s, s);
+            } else if (cell.shape === 'triangle') {
+              triangle(currentX, currentY - s / 2, currentX - s / 2, currentY + s / 2, currentX + s / 2, currentY + s / 2);
+            } else if (cell.shape === 'x-ellipse') {
+              push();
+              translate(currentX, currentY);
+              rotate(PI / 4);
+              ellipse(0, 0, s, s * 0.25);
+              rotate(HALF_PI);
+              ellipse(0, 0, s, s * 0.25);
+              pop();
+            }
+          }
+        } else {
+          textFont(cell.font);
+          text(cell.targetChar, currentX, currentY);
+        }
       }
     } else {
       // gather 애니메이션이 아닐 때의 일반 그리기 로직
@@ -1090,7 +1162,30 @@ class Scene4 {
 
         // fill(cell.color); // Replaced by style.fgColor logic above
         // textFont(cell.font);
-        text(cell.targetChar, x, y);
+        if (currentSet.type === 'shapes') {
+          noStroke();
+          const s = cell.shapeSize;
+          if (s > 0.5) {
+            if (cell.shape === 'square') {
+              rectMode(CENTER);
+              rect(x, y, s, s);
+            } else if (cell.shape === 'circle') {
+              ellipse(x, y, s, s);
+            } else if (cell.shape === 'triangle') {
+              triangle(x, y - s / 2, x - s / 2, y + s / 2, x + s / 2, y + s / 2);
+            } else if (cell.shape === 'x-ellipse') {
+              push();
+              translate(x, y);
+              rotate(PI / 4);
+              ellipse(0, 0, s, s * 0.25);
+              rotate(HALF_PI);
+              ellipse(0, 0, s, s * 0.25);
+              pop();
+            }
+          }
+        } else {
+          text(cell.targetChar, x, y);
+        }
       }
     }
   }
