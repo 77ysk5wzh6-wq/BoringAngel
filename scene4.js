@@ -37,39 +37,74 @@ class Scene4 {
         name: 'ASCII',
         font: 'Fira Mono',
         // 밝기 매핑을 위해 밀도가 낮은 문자부터 높은 문자 순으로 정렬합니다.
-        glyphs: ".`,-':;~i!lI?rvuno)9EZG%#MW&B@$".split('')
+        glyphs: ".`,-':;~i!lI?rvuno)9EZG%#MW&B@$".split(''),
+        style: {
+          bgColor: '#FFFFFF', // White
+          fgColor: '#000000', // Black
+          mode: 'STANDARD'
+        }
       },
       {
         name: 'Japanese',
         font: 'Shippori Mincho',
-        glyphs: "･ . , : ; ° ゛ ゝ ゞ ' ` へ と こ に す れ ね む ぬ め み @ #".split(' ')
+        glyphs: "･ . , : ; ° ゛ ゝ ゞ ' ` へ と こ に す れ ね む ぬ め み @ #".split(' '),
+        style: {
+          bgColor: '#0a0a2a', // Dark Blue
+          fgColor: '#e0ffff', // Cyan-ish White
+          mode: 'CLEAN'
+        }
       },
       {
         name: 'Chinese',
         font: 'Noto Sans TC',
-        glyphs: "･ . , : ; ° ' ` 之 乃 久 小 川 心 光 花 面 重 舞 龍 夢 難 ".split(' ')
+        glyphs: "･ . , : ; ° ' ` 之 乃 久 小 川 心 光 花 面 重 舞 龍 夢 難 ".split(' '),
+        style: {
+          bgColor: '#000000', // Black
+          fgColor: '#00FF41', // Matrix Green
+          mode: 'MATRIX'
+        }
       },
       {
         name: 'Arabic',
         font: 'Noto Sans Arabic',
         // 아랍어는 오른쪽에서 왼쪽으로 쓰므로, 시각적 밀도에 맞춰 수동으로 정렬합니다.
-        glyphs: ". · , : ; ° ' ` ـ ا د ر ل م ن ب ج خ ع غ ف ه ي ش ص ض ط ظ".split(' ')
+        glyphs: ". · , : ; ° ' ` ـ ا د ر ل م ن ب ج خ ع غ ف ه ي ش ص ض ط ظ".split(' '),
+        style: {
+          bgColor: '#000000', // Black
+          fgColor: '#DAA520', // Gold
+          mode: 'GOLD'
+        }
       },
       {
         name: 'Korean',
         font: 'sans-serif', // 기본 산세리프 폰트 사용
-        glyphs: "· . , ; : ㄴ ㄱ ㄷ ㄹ ㅎ 아 가 나 파 화 활".split(' ')
+        glyphs: "· . , ; : ㄴ ㄱ ㄷ ㄹ ㅎ 아 가 나 파 화 활".split(' '),
+        style: {
+          bgColor: '#050505', // Almost Black
+          fgColor: '#DCDCDC', // Ginsboro (Sophisticated Silver-White)
+          mode: 'MINIMAL'
+        }
       },
       {
         name: 'Music',
         font: 'Noto Music',
         // 시각적 밀도가 낮은 문자(밝은 영역)부터 높은 문자(어두운 영역) 순으로 정렬합니다.
-        glyphs: ['◌', '𝅝', '𝀓', '𝀄', '♩', '♪', '𝁉', '♫', '♬', '♯', '𝄢', '𝇚', '𝅘𝅥𝅲', '𝄡', '𝄞', '𝄇']
+        glyphs: ['◌', '𝅝', '𝀓', '𝀄', '♩', '♪', '𝁉', '♫', '♬', '♯', '𝄢', '𝇚', '𝅘𝅥𝅲', '𝄡', '𝄞', '𝄇'],
+        style: {
+          bgColor: '#FDF5E6', // Parchment
+          fgColor: '#000000', // Black
+          mode: 'SHEET'
+        }
       },
       {
         name: 'Shapes',
         type: 'shapes', // 도형 기반 세트임을 나타내는 타입
-        shapes: ['square', 'circle', 'triangle', 'x-ellipse']
+        shapes: ['square', 'circle', 'triangle', 'x-ellipse'],
+        style: {
+          bgColor: '#FFFFFF',
+          fgColor: '#000000',
+          mode: 'SHAPES'
+        }
       }
     ];
     this.currentAsciiSetIndex = 0; // 현재 사용 중인 문자셋 인덱스
@@ -144,7 +179,7 @@ class Scene4 {
       (alpha) => color(random(100, 140), alpha) // Black-ish
     ];
     this.highlightColorIndex = 0;
-    
+
     // --- 글리치 효과 변수 ---
     this.lastMidValue = 0;
     this.midThreshold = 172;
@@ -152,13 +187,13 @@ class Scene4 {
 
     // --- '8' 키 사각형 모드 변수 ---
     this.isRectModeActive = false;
-    this.rectModeColor = () => color(random(255),random(255),0,50); // 사각형 모드 색상 설정
+    this.rectModeColor = () => color(random(255), random(255), 0, 50); // 사각형 모드 색상 설정
 
     // --- '9' 키 원 모드 변수 ---
     this.isCircleModeActive = false;
-    this.circleModeColor = () => color(random(255), 0, random(255),50); // 원 모드 색상 설정
+    this.circleModeColor = () => color(random(255), 0, random(255), 50); // 원 모드 색상 설정
   }
-  
+
 
   // --- 하이라이트 및 점프 확률 계산을 위한 상수 ---
   static get HIGHLIGHT_FADE_START_TIME() { return 168; } // 2분 50초
@@ -209,7 +244,7 @@ class Scene4 {
     if (this.video) {
       this.video.time(0);
       this.video.pause(); // 애니메이션이 끝날 때까지 비디오 정지
-    } 
+    }
     this.currentScale = 1;
     this.targetScale = 1;
     this.transitionState = 'shrinking'; // 씬4가 시작되면 바로 shrinking 부터 시작
@@ -238,6 +273,8 @@ class Scene4 {
 
     // --- 문자셋 인덱스 리셋 ---
     this.currentAsciiSetIndex = 0;
+    this.isLockedToDefault = false;
+    this.lastChaosSwitchTime = 0;
 
     frameRate(30); // 비디오 프레임레이트와 유사하게 설정
   }
@@ -281,40 +318,38 @@ class Scene4 {
       if (now - this.lastHighlightColorChangeTime > this.highlightColorChangeInterval) {
         this.lastHighlightColorChangeTime = now;
         this.highlightColorIndex = (this.highlightColorIndex + 1) % this.highlightColorCycle.length;
-
-        // --- 아스키 문자셋 자동 변경 ---
-        if (this.transitionState === 'playing') {
-          this.currentAsciiSetIndex = (this.currentAsciiSetIndex + 1) % this.languageSets.length;
-          const newSet = this.languageSets[this.currentAsciiSetIndex];
-          console.log(`Switched to ${newSet.name} character set.`);
-          if (newSet.type === 'shapes') {
-            for (const cell of this.gridData) {
-              cell.shape = random(newSet.shapes); // 각 셀에 랜덤 도형 할당
-            }
-          } else {
-            for (const cell of this.gridData) {
-              cell.font = newSet.font;
-            }
-          }
-          this.prepareMorphTarget();
-        }
       }
     } else {
       // gather 애니메이션이 시작되면 하이라이트 색상을 파란색 계열(인덱스 0)로 고정합니다.
       this.highlightColorIndex = 0;
-      // ASCII 문자셋도 기본(인덱스 0)으로 고정합니다.
-      if (this.currentAsciiSetIndex !== 0) {
-        this.currentAsciiSetIndex = 0;
-        const newSet = this.languageSets[this.currentAsciiSetIndex];
-        console.log(`Fixed to ${newSet.name} character set for gathering.`);
-        if (newSet.type === 'shapes') {
-          // gather 애니메이션 시작 시 도형 모드였다면, 각 셀에 랜덤 도형을 다시 할당합니다.
-          for (const cell of this.gridData) {
-            cell.shape = random(newSet.shapes);
-          }
+    }
+
+    // --- Chaotic Switching during Gathering Start (0 ~ 2 seconds) ---
+    if (currentTime >= this.GATHER_START_TIME && currentTime < this.GATHER_START_TIME + 2) {
+      if (now - this.lastChaosSwitchTime > 100) { // 0.1초마다
+        this.lastChaosSwitchTime = now;
+
+        let newIndex = this.currentAsciiSetIndex;
+        while (newIndex === this.currentAsciiSetIndex) {
+          newIndex = floor(random(this.languageSets.length));
         }
+        this.currentAsciiSetIndex = newIndex;
+
+        const newSet = this.languageSets[this.currentAsciiSetIndex];
+        // console.log(`Chaos Switch: ${newSet.name}`);
+        this.updateGridForNewSet(newSet);
         this.prepareMorphTarget();
       }
+    }
+
+    // --- Lock to Fira Mono (ASCII) after Gathering starts + 2 seconds ---
+    if (currentTime >= this.GATHER_START_TIME + 2 && !this.isLockedToDefault) {
+      this.isLockedToDefault = true;
+      this.currentAsciiSetIndex = 0; // Force ASCII
+      const newSet = this.languageSets[this.currentAsciiSetIndex];
+      console.log(`Locked to ${newSet.name} character set.`);
+      this.updateGridForNewSet(newSet);
+      this.prepareMorphTarget();
     }
 
     // 스마일 이모지 시간대에는 다른 모든 애니메이션을 중지하고 이모지만 그립니다.
@@ -651,7 +686,7 @@ class Scene4 {
           cell.lastCharChangeTime = now;
           cell.highlightStartTime = 0;
           this.gridData[i].previousChar = this.gridData[i].targetChar;
-        } 
+        }
         // 문자가 변경되지 않았을 때, 확률적으로 하이라이트를 적용합니다.
         else if (cell.highlightStartTime === 0 && random() < highlightProbability) {
           cell.highlightStartTime = now;
@@ -851,21 +886,33 @@ class Scene4 {
         }
       }
     }
-    let bgColor = 255;
+
+    // --- Aesthetic Settings ---
+    const currentSet = this.languageSets[this.currentAsciiSetIndex];
+    const style = currentSet.style;
+
+    // Background Color Logic
+    let bgColor = color(style.bgColor);
+
     const bgAnimElapsedTime = now - this.sweepStartTime;
+    // 배경 전환 효과 (Sweep Effect)가 진행 중일 때는 흰색 등 다른 색과 블렌딩 가능하지만,
+    // 극적인 변화를 위해 현재 스타일 색상을 기본으로 하되, 전환 효과는 오버레이 형식으로 할 수도 있음.
+    // 기존 로직 유지하되, bgColor를 동적으로 할당.
     if (bgAnimElapsedTime >= 0) {
       if (bgAnimElapsedTime < this.bgHoldDuration) {
-        bgColor = 180;
+        // bgColor = 180; // Existing logic override
       } else if (bgAnimElapsedTime < this.bgHoldDuration + this.bgFadeDuration) {
-        bgColor = map(bgAnimElapsedTime - this.bgHoldDuration, 0, this.bgFadeDuration, 150, 255);
+        // bgColor = map... // Existing logic override
       }
     }
+    // For now, simplify to just use the new style bgColor, but keep sweep effect if truly needed effectively. 
+    // Given request "dramatic change", pure color switch is better.
     background(bgColor);
 
     textAlign(CENTER, CENTER);
     textSize(this.glyphSize);
+
     // 개더링이 시작되면 볼드를 해제하고, 그 전까지는 볼드를 유지합니다.
-    const currentSet = this.languageSets[this.currentAsciiSetIndex];
     if (songTime >= this.GATHER_START_TIME || currentSet.name === 'Music' || currentSet.name === 'Chinese') {
       // 개더링이 시작되거나, 'Music' 또는 'Chinese' 문자셋일 때는 볼드 처리를 하지 않습니다.
       textStyle(NORMAL);
@@ -873,7 +920,11 @@ class Scene4 {
       // 그 외의 경우에는 볼드 스타일을 적용합니다.
       textStyle(BOLD);
     }
-    fill(0);
+
+    // 기본 텍스트 색상 설정
+    if (style.fgColor !== 'RAINBOW') {
+      fill(style.fgColor);
+    }
 
     const offsetX = (width - this.finalCols * this.cellSize) / 2;
     const offsetY = (height - this.finalRows * this.cellSize) / 2;
@@ -933,129 +984,115 @@ class Scene4 {
           cell.highlightStartTime = 0;
         }
 
+        // Apply distinct color per cell if RAINBOW
+        if (style.fgColor === 'RAINBOW') {
+          colorMode(HSB, 360, 100, 100);
+          const hue = (now / 5 + i * 2) % 360; // Animated rainbow
+          fill(hue, 80, 100);
+          colorMode(RGB); // Reset
+        } else if (style.fgColor) {
+          fill(style.fgColor);
+        }
+
         textFont(cell.font);
         text(cell.targetChar, currentX, currentY);
       }
     } else {
       // gather 애니메이션이 아닐 때의 일반 그리기 로직
-      const currentSet = this.languageSets[this.currentAsciiSetIndex];
-      if (currentSet.type === 'shapes') {
-        // --- 도형 모드 그리기 ---
-        rectMode(CENTER);
-        stroke(random(255), 0, random(255));
+      // 도형 모드는 위에서 이미 처리되어 리턴됨 (except logic was moved? No, shape logic is before this block in original code)
+      // !!! CHECK: shape logic uses "style" too? Original code handled shape mode specifically.
+      // Assuming shape mode logic is BEFORE this block and returns early as seen in previous read.
 
-        for (let i = 0; i < this.gridData.length; i++) {
-          const cell = this.gridData[i];
-          let x = offsetX + (i % this.finalCols) * this.cellSize + this.cellSize / 2;
-          let y = offsetY + floor(i / this.finalCols) * this.cellSize + this.cellSize / 2;
+      for (let i = 0; i < this.gridData.length; i++) {
+        const cell = this.gridData[i];
+        let x = offsetX + (i % this.finalCols) * this.cellSize + this.cellSize / 2;
+        let y = offsetY + floor(i / this.finalCols) * this.cellSize + this.cellSize / 2;
+        textFont(cell.font); // 각 셀의 폰트 적용
 
-          // 하이라이트 색상을 가져와서 알파값을 두 배로 설정합니다.
-          const baseColor = this.getHighlightColorForCell(i, 128);
-          const r = red(baseColor);
-          const g = green(baseColor);
-          const b = blue(baseColor);
-          const a = alpha(baseColor);
-          fill(r, g, b, min(a * 2, 255)); // 알파값을 두 배로 하되, 255를 넘지 않도록 합니다.
-
-          const shapeSize = cell.shapeSize || this.cellSize;
-
-          push();
-          translate(x, y);
-          switch (cell.shape) {
-            case 'square':
-              rect(0, 0, shapeSize, shapeSize);
-              break;
-            case 'circle':
-              ellipse(0, 0, shapeSize, shapeSize);
-              break;
-            case 'triangle':
-              const h = shapeSize * (sqrt(3) / 2);
-              triangle(0, -h / 2, -shapeSize / 2, h / 2, shapeSize / 2, h / 2);
-              break;
-            case 'x-ellipse':
-              ellipseMode(CENTER);
-              rotate(PI / 4);
-              ellipse(0, 0, shapeSize, shapeSize / 4);
-              rotate(PI / 2);
-              ellipse(0, 0, shapeSize, shapeSize / 4);
-              break;
+        // --- 점프 애니메이션 y좌표 계산 ---
+        if (cell.isJumping) {
+          const jumpElapsed = now - cell.jumpStartTime;
+          if (jumpElapsed < this.jumpAnimationDuration) {
+            const jumpProgress = jumpElapsed / this.jumpAnimationDuration;
+            // sin 함수를 이용해 부드럽게 올라갔다 내려오는 움직임 구현 (0 -> 1 -> 0)
+            const jumpOffset = sin(jumpProgress * PI) * this.cellSize * cell.jumpDirection;
+            y -= jumpOffset;
+          } else {
+            cell.isJumping = false; // 애니메이션 종료
           }
+        }
+
+
+        // --- 임팩트 효과 계산 ---
+        if (this.impactActive) {
+          const elapsed = millis() - this.impactStartTime;
+          const totalDuration = this.impactExpandDuration + this.impactContractDuration;
+
+          if (elapsed < totalDuration) {
+            const glyphPos = createVector(x, y);
+            const direction = p5.Vector.sub(glyphPos, this.impactCenter);
+            const distance = direction.mag();
+            direction.normalize();
+
+            // 거리에 반비례하는 이동량 (가까울수록 많이 움직임)
+            const baseDisplacement = map(distance, 0, width, this.impactMaxDisplacement, 10);
+            const displacement = baseDisplacement * cell.impactRandomFactor; // 각 글자의 고유 랜덤 계수 적용
+
+            const moveAmount = (elapsed < this.impactExpandDuration)
+              ? lerp(0, displacement, elapsed / this.impactExpandDuration) // 확장
+              : lerp(displacement, 0, (elapsed - this.impactExpandDuration) / this.impactContractDuration); // 수축
+
+            x += direction.x * moveAmount;
+            y += direction.y * moveAmount;
+          } else {
+            this.impactActive = false; // 애니메이션 종료
+          }
+        }
+
+        // --- Color Handling ---
+
+        // 1. Base Text Color
+        if (style.fgColor === 'RAINBOW') {
+          colorMode(HSB, 360, 100, 100);
+          // Random neon-like colors. Use noise for some coherence or random for chaos.
+          // Let's make it static per cell per frame for chaos or logical.
+          // "Dramatic" -> Chaos/Neon city vibe.
+          const h = (millis() * 0.1 + i) % 360;
+          fill(h, 90, 100);
+          colorMode(RGB);
+        } else {
+          fill(style.fgColor);
+        }
+
+        // 2. Color Change Sweep Override (Legacy Logic maintained for now but might clash with drastic background changes)
+        // If the user wants drama per language, the sweep might be less important or should adapt.
+        // Let's keep the sweep logic as an override if it triggers.
+        const currentCol = i % this.finalCols;
+        if (cell.targetColor && colsToColorSet.has(currentCol)) {
+          // If a sweep is happening (late in the scene), use that color.
+          // cell.color = cell.targetColor; // Update cell color?
+          fill(cell.targetColor);
+        }
+
+        // --- 하이라이트 그리기 ---
+        // 0.1초 동안 하이라이트 효과를 적용합니다.
+        if (cell.highlightStartTime > 0 && now - cell.highlightStartTime < 100) {
+          push();
+          noStroke();
+          fill(cell.highlightColor);
+          // 셀 배경에 사각형을 그려 하이라이트 효과를 줍니다.
+          rect(x, y, this.cellSize, this.cellSize);
           pop();
-        }
-        // 도형 모드일 때는 아래의 문자 그리기 로직을 건너뜁니다.
-        return;
-      }
-
-
-    for (let i = 0; i < this.gridData.length; i++) {
-      const cell = this.gridData[i];
-      let x = offsetX + (i % this.finalCols) * this.cellSize + this.cellSize / 2;
-      let y = offsetY + floor(i / this.finalCols) * this.cellSize + this.cellSize / 2;
-      textFont(cell.font); // 각 셀의 폰트 적용
-
-      // --- 점프 애니메이션 y좌표 계산 ---
-      if (cell.isJumping) {
-        const jumpElapsed = now - cell.jumpStartTime;
-        if (jumpElapsed < this.jumpAnimationDuration) {
-          const jumpProgress = jumpElapsed / this.jumpAnimationDuration;
-          // sin 함수를 이용해 부드럽게 올라갔다 내려오는 움직임 구현 (0 -> 1 -> 0)
-          const jumpOffset = sin(jumpProgress * PI) * this.cellSize * cell.jumpDirection;
-          y -= jumpOffset;
         } else {
-          cell.isJumping = false; // 애니메이션 종료
+          // 하이라이트 시간이 지나면 초기화합니다.
+          cell.highlightStartTime = 0;
         }
+
+        // fill(cell.color); // Replaced by style.fgColor logic above
+        // textFont(cell.font);
+        text(cell.targetChar, x, y);
       }
-
-
-      // --- 임팩트 효과 계산 ---
-      if (this.impactActive) {
-        const elapsed = millis() - this.impactStartTime;
-        const totalDuration = this.impactExpandDuration + this.impactContractDuration;
-
-        if (elapsed < totalDuration) {
-          const glyphPos = createVector(x, y);
-          const direction = p5.Vector.sub(glyphPos, this.impactCenter);
-          const distance = direction.mag();
-          direction.normalize();
-
-          // 거리에 반비례하는 이동량 (가까울수록 많이 움직임)
-          const baseDisplacement = map(distance, 0, width, this.impactMaxDisplacement, 10);
-          const displacement = baseDisplacement * cell.impactRandomFactor; // 각 글자의 고유 랜덤 계수 적용
-
-          const moveAmount = (elapsed < this.impactExpandDuration)
-            ? lerp(0, displacement, elapsed / this.impactExpandDuration) // 확장
-            : lerp(displacement, 0, (elapsed - this.impactExpandDuration) / this.impactContractDuration); // 수축
-
-          x += direction.x * moveAmount;
-          y += direction.y * moveAmount;
-        } else {
-          this.impactActive = false; // 애니메이션 종료
-        }
-      }
-      const currentCol = i % this.finalCols;
-      if (cell.targetColor && colsToColorSet.has(currentCol)) {
-        cell.color = cell.targetColor;
-      }
-
-      // --- 하이라이트 그리기 ---
-      // 0.1초 동안 하이라이트 효과를 적용합니다.
-      if (cell.highlightStartTime > 0 && now - cell.highlightStartTime < 100) {
-        push();
-        noStroke();
-        fill(cell.highlightColor);
-        // 셀 배경에 사각형을 그려 하이라이트 효과를 줍니다.
-        rect(x, y, this.cellSize, this.cellSize);
-        pop();
-      } else {
-        // 하이라이트 시간이 지나면 초기화합니다.
-        cell.highlightStartTime = 0;
-      }
-
-      fill(cell.color);
-      textFont(cell.font);
-      text(cell.targetChar, x, y);
     }
-   }
   }
 
   getHighlightColorForCell(cellIndex, brightness) {
@@ -1102,5 +1139,40 @@ class Scene4 {
   getDynamicProbability(baseProbability) {
     // 항상 기본 확률을 반환하도록 수정하여, 시간이 지나도 확률이 0이 되지 않도록 합니다.
     return baseProbability;
+  }
+
+  updateGridForNewSet(newSet) {
+    if (newSet.type === 'shapes') {
+      for (const cell of this.gridData) {
+        cell.shape = random(newSet.shapes);
+      }
+    } else {
+      for (const cell of this.gridData) {
+        cell.font = newSet.font;
+      }
+    }
+  }
+
+  mousePressed() {
+    // Only active during 'playing' state
+    if (this.transitionState !== 'playing') return;
+
+    const currentTime = this.song.isPlaying() ? this.song.currentTime() : 0;
+
+    // Stop interaction 2 seconds after gather starts
+    if (currentTime >= this.GATHER_START_TIME + 2) return;
+
+    // Randomly switch language set
+    let newIndex = this.currentAsciiSetIndex;
+    while (newIndex === this.currentAsciiSetIndex) {
+      newIndex = floor(random(this.languageSets.length));
+    }
+
+    this.currentAsciiSetIndex = newIndex;
+    const newSet = this.languageSets[this.currentAsciiSetIndex];
+    console.log(`Mouse Click: Switched to ${newSet.name}`);
+
+    this.updateGridForNewSet(newSet);
+    this.prepareMorphTarget();
   }
 }

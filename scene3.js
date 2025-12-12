@@ -156,9 +156,18 @@ our joy and suffering,
         this.finalGridState.push({
           char: char,
           revealed: false,
+          revealDelay: 0,
           isShifting: false, // 글자 이동 애니메이션 상태
           font: random(this.fonts), // 각 글자에 무작위 폰트 할당
           shiftStartTime: 0, // 글자 이동 애니메이션 시작 시간
+          // Mouse Push Interaction Data
+          pushData: {
+            active: false,
+            startTime: 0,
+            duration: 0,
+            targetX: 0,
+            targetY: 0
+          }
         });
         charIndex++;
       }
@@ -414,7 +423,7 @@ our joy and suffering,
           let x = i * cellWidth + cellWidth / 2; // 기본 x, y 좌표
           let y = j * cellHeight + cellHeight / 2;
           textFont(cell.font); // 각 셀에 할당된 폰트 적용
-          
+
           // 특정 폰트 크기 보정
           if (cell.font === 'Work Sans') {
             textSize(textSizeValue * 0.8);
@@ -452,6 +461,46 @@ our joy and suffering,
               }
             } else {
               cell.isShifting = false;
+            }
+          }
+
+          // --- 마우스 인터랙션 (밀어내기) 애니메이션 ---
+          if (cell.pushData && cell.pushData.active) {
+            const elapsed = now - cell.pushData.startTime;
+            if (elapsed < cell.pushData.duration) {
+              const progress = elapsed / cell.pushData.duration;
+              let pushAmount = 0;
+
+              const pushOutTime = 0.2; // 전체 시간의 20% 동안 밀려남
+
+              if (progress < pushOutTime) {
+                // 밖으로 밀려남 (Fast Out)
+                let t = progress / pushOutTime;
+                pushAmount = sin(t * HALF_PI); // 0 -> 1
+              } else {
+                // 제자리로 돌아옴 (Slow In w/ Elastic feel maybe? or just smooth)
+                let t = (progress - pushOutTime) / (1 - pushOutTime);
+                // Simple ease out for return
+                pushAmount = 1 - t;
+                pushAmount = pushAmount * pushAmount; // Ease In (Quadratic) - start slow, end fast? No, we want start fast end slow usually for return? 
+                // Let's use Ease Out for return (start fast end slow) -> 1 - (1-t)^2 ?
+                // No, '1 -> 0'. 
+                // Natural return: Spring-like.
+                // Let's just use smoothstep or QuadEaseInOut.
+                // Let's stick to simple EaseOut for return: (1-t)^2 is EaseIn. 1 - t^2 is EaseOut?
+                // We want 1 -> 0.
+                // t goes 0 -> 1.
+                // Value goes 1 -> 0.
+                // (1-t) goes 1 -> 0.
+                // (1-t)^2 goes 1 -> 0 with ease in (starts slow change, speeds up at end? No. gradient 2(1-t)*(-1) = -2(1-t). At t=0, slope -2. At t=1, slope 0. So starts fast, slows down.)
+                pushAmount = (1 - t) * (1 - t);
+              }
+
+              x += cell.pushData.targetX * pushAmount;
+              y += cell.pushData.targetY * pushAmount;
+
+            } else {
+              cell.pushData.active = false;
             }
           }
 
@@ -660,7 +709,7 @@ our joy and suffering,
         rect(x, y, currentWidth, cellHeight);
         push();
         fill(0);
-        rect(x+currentWidth/2, y, 10, cellHeight);
+        rect(x + currentWidth / 2, y, 10, cellHeight);
         pop();
       }
     }
@@ -704,7 +753,7 @@ our joy and suffering,
     let offset = map(vol, 0, 1, 0, 3); // 볼륨에 따라 오프셋 조절 (최대 5px)
 
     // 떨림 효과 추가 (볼륨에 비례)
-    let shakeAmt = map(vol, 0, 1, 0, 5); 
+    let shakeAmt = map(vol, 0, 1, 0, 5);
 
     if (this.activeFlash) {
       text(this.currentWord, width / 2, height / 2);
@@ -749,7 +798,7 @@ our joy and suffering,
         if (!cell) continue;
 
         textFont(cell.font); // 각 셀에 할당된 폰트를 사용하도록 수정
-        
+
         // 'Work Sans' 폰트 크기 보정
         if (cell.font === 'Work Sans') {
           textSize(cellHeight * 0.8);
@@ -791,6 +840,59 @@ our joy and suffering,
       this.shiftDirection = 'UP';
     } else if (keyCode === DOWN_ARROW) {
       this.shiftDirection = 'DOWN';
+    }
+  }
+
+  mousePressed() {
+    // 씬이 활성화 상태일 때만 반응 (간단히 현재 시간이 씬 시작 시간 이후인지 등으로 판단하거나, 메인에서 호출해준다고 가정)
+    // 여기서는 별도 체크 없이 로직 구현 (메인 sketch.js에서 active scene의 mousePressed를 호출한다고 가정)
+
+    if (!this.finalGridState || this.finalGridState.length === 0) return;
+
+    const cellWidth = width / this.gridCols;
+    const cellHeight = height / this.gridRows;
+    const maxDist = width * 0.8; // 영향 범위
+
+    for (let j = 0; j < this.gridRows; j++) {
+      for (let i = 0; i < this.gridCols; i++) {
+        const gridIndex = j * this.gridCols + i;
+        const cell = this.finalGridState[gridIndex];
+
+        if (!cell) continue;
+
+        // 셀의 중심 좌표
+        const cellX = i * cellWidth + cellWidth / 2;
+        const cellY = j * cellHeight + cellHeight / 2;
+
+        // 마우스와 셀 사이의 거리 및 각도 계산
+        const d = dist(mouseX, mouseY, cellX, cellY);
+
+        if (d < maxDist) {
+          const angle = atan2(cellY - mouseY, cellX - mouseX);
+
+          // 거리에 따른 힘 계산 (가까울수록 강하게)
+          // 0에서 1 사이의 값
+          let force = map(d, 0, maxDist, 1, 0);
+          force = constrain(force, 0, 1);
+
+          // Easing을 적용하여 가까운 곳이 훨씬 더 멀리 가도록 (force^2 or force^3)
+          force = pow(force, 2);
+
+          // 기본 밀려나는 거리 (화면 크기 비례)
+          const maxPushDistance = 200;
+
+          // 랜덤 요소 추가 ("각 셀별 멀어지는 거리는 다 랜덤이어야해")
+          const randomFactor = random(0.5, 1.5);
+
+          const pushDistance = maxPushDistance * force * randomFactor;
+
+          cell.pushData.active = true;
+          cell.pushData.startTime = millis();
+          cell.pushData.duration = random(800, 1200); // 돌아오는 시간도 약간 랜덤하게
+          cell.pushData.targetX = cos(angle) * pushDistance;
+          cell.pushData.targetY = sin(angle) * pushDistance;
+        }
+      }
     }
   }
 
