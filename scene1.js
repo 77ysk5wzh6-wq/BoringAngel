@@ -56,7 +56,7 @@ class Scene1 {
     this.inCenterCircle_y;
     this.targetCircleY;
     this.centerCircleDiameter = 61; // 시작할때 날아오는 원의 지름
- 
+
     // --- Squares Color Animation --- (시작 트리거가 날아와서  부딪혔을때 계단식 색 변화)
     this.colorAnimationStartTime;
     this.colorAnimationDuration = 2; // 색상 변경 애니메이션 지속 시간 (초) - setup에서 계산됨
@@ -124,7 +124,7 @@ class Scene1 {
     this.titleAnimationState = 'idle'; // 'idle', 'animating', 'done'
     this.titleAnimationStartTime = 0;
     this.titleAnimationDuration = 1000; // 1초
-    
+
     this.fonts = [
       'Fira Mono',
       'Geom',
@@ -227,11 +227,11 @@ class Scene1 {
 
   draw() {
     // 배경을 검은색으로 설정
-    
+
     let currentTime = this.song.currentTime();
-    if(currentTime <= this.stretchAnimationStartTimeTrigger){
+    if (currentTime <= this.stretchAnimationStartTimeTrigger) {
       fill(0);
-    }else{
+    } else {
       fill(255);
     }
 
@@ -257,7 +257,7 @@ class Scene1 {
     }
     if (this.song.isPlaying()) {
       // 초침 비트에 맞춰 중앙 원 색상 변경
-   
+
       if (floor(millis() / this.beatDuration) % 2 === 0) {
         this.centerSquare_col = color(255);
       } else {
@@ -280,7 +280,7 @@ class Scene1 {
         this.centerCircleAnimationState = 'animating';
         this.centerCircleAnimationStartTime = millis();
       }
-      
+
       // Stretch 애니메이션 시작 트리거
       if (currentTime > this.stretchAnimationStartTimeTrigger && this.stretchAnimationState === 'idle') {
         this.stretchAnimationState = 'animating';
@@ -411,7 +411,7 @@ class Scene1 {
       if (this.circleA_animationState === 'animating') {
         let elapsed = (millis() - this.circleA_animationStartTime) / 1000;
         let progress = constrain(elapsed / this.circleA_animationDuration, 0, 1);
-        this.circleA_x_offset = lerp(0, this.centerCircleDiameter*2, progress);
+        this.circleA_x_offset = lerp(0, this.centerCircleDiameter * 2, progress);
         if (progress >= 1) {
           this.circleA_animationState = 'done';
         }
@@ -421,7 +421,7 @@ class Scene1 {
       if (this.circleB_animationState === 'animating') {
         let elapsed = (millis() - this.circleB_animationStartTime) / 1000;
         let progress = constrain(elapsed / this.circleB_animationDuration, 0, 1);
-        this.circleB_x_offset = lerp(0, -this.centerCircleDiameter*2, progress);
+        this.circleB_x_offset = lerp(0, -this.centerCircleDiameter * 2, progress);
         if (progress >= 1) {
           this.circleB_animationState = 'done';
         }
@@ -483,14 +483,14 @@ class Scene1 {
     if (this.circleA_animationState === 'idle') {
       this.circleA_x_offset = 0;
     } else if (this.circleA_animationState === 'done') {
-      this.circleA_x_offset = this.centerCircleDiameter*2;
+      this.circleA_x_offset = this.centerCircleDiameter * 2;
     }
 
     // Circle B: 애니메이션 상태에 따라 x 오프셋 최종 결정
     if (this.circleB_animationState === 'idle') {
       this.circleB_x_offset = 0;
     } else if (this.circleB_animationState === 'done') {
-      this.circleB_x_offset = -this.centerCircleDiameter*2;
+      this.circleB_x_offset = -this.centerCircleDiameter * 2;
     }
 
     // =================================================
@@ -554,8 +554,8 @@ class Scene1 {
         noStroke();
         rect(center_x, center_y, w, h)
       }
-    } 
-    
+    }
+
     // --- Screen Flash 렌더링 ---
     // 이 부분을 다른 시각 요소들 위에, 하지만 이모지보다는 아래에 그립니다.
     if (this.screenFlashState === 'flashing') {
@@ -627,35 +627,35 @@ class Scene1 {
       fill(255);
     }
     if (currentTime <= 60) {
-    // --- 3개의 원/사각형 그리기 ---
-    // Scene2의 첫 오선지 y좌표와 동일하게 맞춤
-    const finalY = 100 - 2 * this.note_height;
-    let currentY;
+      // --- 3개의 원/사각형 그리기 ---
+      // Scene2의 첫 오선지 y좌표와 동일하게 맞춤
+      const finalY = 100 - 2 * this.note_height;
+      let currentY;
 
-    if (this.stretchAnimationState === 'idle') {
-      currentY = height / 2;
-    } else if (this.stretchAnimationState === 'animating') {
-      let elapsed = (millis() - this.stretchAnimationStartTime) / 1000;
-      let progress = constrain(elapsed / this.stretchAnimationDuration, 0, 1);
-      currentY = lerp(height / 2, finalY, progress);
-    } else { // 'done'
-      currentY = finalY;
-    }
+      if (this.stretchAnimationState === 'idle') {
+        currentY = height / 2;
+      } else if (this.stretchAnimationState === 'animating') {
+        let elapsed = (millis() - this.stretchAnimationStartTime) / 1000;
+        let progress = constrain(elapsed / this.stretchAnimationDuration, 0, 1);
+        currentY = lerp(height / 2, finalY, progress);
+      } else { // 'done'
+        currentY = finalY;
+      }
 
-    // 원 1 (중앙 고정)
+      // 원 1 (중앙 고정)
       if (this.stretchAnimationState === 'idle') {
         ellipse(this.centerCircle_y, currentY, this.centerCircleDiameter, this.centerCircleDiameter);
       } else {
         rect(width / 2, currentY, this.stretchedWidth, this.stretchedHeight);
       }
-    
+
       // 원 2 (오른쪽으로 이동) - 스트레치 애니메이션 적용
       if (this.stretchAnimationState === 'idle') {
         ellipse(width / 2 + this.circleA_x_offset, currentY, this.centerCircleDiameter, this.centerCircleDiameter);
       } else {
         rect(width / 2 + this.circleA_x_offset, currentY, this.sideStretchedWidth, this.stretchedHeight);
       }
-    
+
       // 원 3 (왼쪽으로 이동) - 스트레치 애니메이션 적용
       if (this.stretchAnimationState === 'idle') {
         ellipse(width / 2 + this.circleB_x_offset, currentY, this.centerCircleDiameter, this.centerCircleDiameter);
@@ -688,16 +688,16 @@ class Scene1 {
       for (let i = 0; i < numLines; i++) {
         const staveIndex = floor(i / 5); // 0부터 5까지 (총 6개 오선지 묶음)
         const lineInStaveIndex = i % 5;  // 0부터 4까지 (묶음 내 라인 번호)
-  
+
         const staffGroupIndex = floor(staveIndex / 2); // 0, 1, 2 (두 묶음씩 그룹)
         const staffInGroupIndex = staveIndex % 2;      // 0, 1 (그룹 내 인덱스)
         const staveCenterY = 100 + (staffGroupIndex * this.note_height * 25) + (staffInGroupIndex * this.note_height * 10);
         const lineY = staveCenterY - (2 * this.note_height) + (lineInStaveIndex * this.note_height);
-  
+
         line(startX, lineY, endX, lineY); // 오선지 한 줄 그리기
         lastLineY = lineY; // 마지막 y좌표 업데이트
       }
-  
+
       // --- 5선지 두 개씩 묶는 세로선 그리기 ---
       // 세로선은 가로선이 그려진 만큼만 점진적으로 길어집니다.
       const numStaffGroups = floor(numLines / 10);
@@ -720,23 +720,23 @@ class Scene1 {
         line(endX, y1_top, endX, lastLineY);
       }
     }
-    if(currentTime <= 1){
+    if (currentTime <= 1) {
       push();
       textAlign(CENTER, CENTER);
       fill(random(245, 255));
-      rect(width/2, height/2, windowWidth, windowHeight);
+      rect(width / 2, height / 2, windowWidth, windowHeight);
       textSize(63);
-      text('❤️',width/2, height/2);
+      text('❤️', width / 2, height / 2);
       pop();
     }
-    if(currentTime < 60.167 && currentTime > 59.167){
+    if (currentTime < 60.167 && currentTime > 59.167) {
       background(random(245, 255))
       push();
       textAlign(CENTER, CENTER);
       fill(random(245, 255));
-      rect(width/2, height/2, windowWidth, windowHeight);
+      rect(width / 2, height / 2, windowWidth, windowHeight);
       textSize(50);
-      text('👶',width/2, height/2);
+      text('👶', width / 2, height / 2);
       pop();
     }
 
@@ -744,21 +744,10 @@ class Scene1 {
     // 애니메이션이 끝나기 전까지 제목을 그립니다.
     if (this.titleAnimationState !== 'done') {
       push();
-      textAlign(LEFT, CENTER);
+      textAlign(LEFT, CENTER); // 수동 위치 계산을 위해 왼쪽 정렬을 명시합니다.
       let padding = 100;
-      let initialSize = 165;
+      let initialSize = 305;
       let baseSize = initialSize;
-
-      // --- 폰트 크기 조정을 위한 너비 계산 ---
-      textSize(initialSize); // 먼저 기준 사이즈를 설정
-      let textW = this.title1Chars.reduce((acc, c) => {
-        textFont(c.font);
-        return acc + textWidth(c.char);
-      }, 0);
-
-      if (textW > width - padding) {
-        baseSize = initialSize * ((width - padding) / textW);
-      }
 
       let currentSize = baseSize;
       let currentAlpha = 255;
@@ -790,19 +779,30 @@ class Scene1 {
         }
       }
 
+      // --- 실제 폰트 크기(currentSize)로 너비 다시 계산 ---
+      textSize(currentSize);
+      let textW1 = this.title1Chars.reduce((acc, c) => {
+        textFont(c.font);
+        return acc + textWidth(c.char);
+      }, 0);
+      let textW2 = this.title2Chars.reduce((acc, c) => {
+        textFont(c.font);
+        return acc + textWidth(c.char);
+      }, 0);
+
       // 타이틀 1 ("Boring") 그리기
-      let currentX1 = 50; // 왼쪽에서 50px 떨어진 위치에서 시작
+      let currentX1 = (width - textW1) / 2; // 중앙 정렬을 위한 시작 X 좌표 계산
       this.title1Chars.forEach(c => {
         textFont(c.font);
-        text(c.char, currentX1, height / 2 - currentSize / 1.9);
+        text(c.char, currentX1, height / 2 - currentSize / 1.4);
         currentX1 += textWidth(c.char);
       });
 
       // 타이틀 2 ("Life") 그리기
-      let currentX2 = 50; // 왼쪽에서 50px 떨어진 위치에서 시작
+      let currentX2 = (width - textW2) / 2; // 중앙 정렬을 위한 시작 X 좌표 계산
       this.title2Chars.forEach(c => {
         textFont(c.font);
-        text(c.char, currentX2, height / 2 + currentSize / 1.9);
+        text(c.char, currentX2, height / 2 + currentSize / 1.4);
         currentX2 += textWidth(c.char);
       });
       pop();
@@ -912,7 +912,7 @@ class Scene1 {
     if (!this.song.isPlaying()) {
       this.togglePlay();
     }
-    
+
     // 클릭한 위치에 새로운 원을 추가합니다.
     this.clickCircles.push({
       x: mouseX,

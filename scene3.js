@@ -365,7 +365,7 @@ our joy and suffering,
         fill(random(245, 255));
         rect(width / 2, height / 2, windowWidth, windowHeight);
         textSize(50);
-        text('🚶‍♂️', width / 2, height / 2);
+        text('🙋‍♂️', width / 2, height / 2);
         pop();
       }
       if (currentTime <= this.YOGA_EMOJI_START_TIME + this.EMOJI_DURATION && currentTime >= this.YOGA_EMOJI_START_TIME) {
@@ -374,7 +374,7 @@ our joy and suffering,
         fill(random(245, 255));
         rect(width / 2, height / 2, windowWidth, windowHeight);
         textSize(50);
-        text('🤵‍♂️', width / 2, height / 2);
+        text('🧎🏻‍♂️‍➡️', width / 2, height / 2);
         pop();
       }
     }

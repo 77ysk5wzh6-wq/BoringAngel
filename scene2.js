@@ -108,6 +108,12 @@ class Scene2 {
     this.soarDistance = 800; // 솟구치는 거리
     this.soarAllTriggered = false; // 80.12초에 모든 기호를 솟구치게 하는 트리거 플래그
     this.scoreBuffer = null; // 오프스크린 버퍼
+
+    // --- 오선지 색상 변경 효과 변수 ---
+    this.staffColorChangeActive = false;
+    this.staffColorChangeStartTime = 0;
+    this.staffColorChangeDuration = 200; // 0.2초
+    this.randomStaffColor = null;
   }
 
   setup() {
@@ -133,6 +139,7 @@ class Scene2 {
     this.initializeGrid();
     this.clickedSymbols = []; // 씬 진입 시 클릭된 기호 배열 초기화
     this.soarAllTriggered = false; // 씬 진입 시 트리거 플래그 리셋
+    this.staffColorChangeActive = false; // 씬 진입 시 색상 변경 상태 리셋
 
     if (this.scoreBuffer) {
       this.scoreBuffer.clear();
@@ -712,15 +719,26 @@ class Scene2 {
   drawScoreElements(data, finaleElapsedTime, finaleAlpha, sizeMultiplier, staffOnly = false, isShaking = false, pg = null) {
     const isFinale = finaleElapsedTime >= 0;
 
+    // --- 오선지 색상 결정 로직 ---
+    let staffColor = color(0, finaleAlpha); // 기본 검은색
+    if (this.staffColorChangeActive) {
+      const elapsed = millis() - this.staffColorChangeStartTime;
+      if (elapsed < this.staffColorChangeDuration) {
+        staffColor = this.randomStaffColor;
+        staffColor.setAlpha(finaleAlpha); // 투명도 적용
+      } else {
+        this.staffColorChangeActive = false; // 0.2초 지나면 비활성화
+      }
+    }
     const allStaffYPositions = [];
     for (let j = 0; j < this.staff_num; j++) {
       allStaffYPositions.push(100 + j * this.note_height * 25);
       allStaffYPositions.push(100 + this.note_height * 10 + j * this.note_height * 25);
     }
-    allStaffYPositions.forEach(yPos => this.drawStaff(yPos, 255, pg));
+    allStaffYPositions.forEach(yPos => this.drawStaff(yPos, staffColor, pg));
 
     // Staves lines logic
-    if (pg) { pg.strokeWeight(4); pg.stroke(0, 255); } else { strokeWeight(4); stroke(0, 255); }
+    if (pg) { pg.strokeWeight(4); pg.stroke(staffColor); } else { strokeWeight(4); stroke(staffColor); }
     let startX = 50;
     let endX = width - 50;
     for (let j = 0; j < this.staff_num; j++) {
@@ -825,13 +843,13 @@ class Scene2 {
     }
   }
 
-  drawStaff(y, alpha = 255, pg = null) {
+  drawStaff(y, staffColor, pg = null) {
     if (pg) {
-      pg.stroke(0, alpha); pg.strokeWeight(1);
+      pg.stroke(staffColor); pg.strokeWeight(1);
       let startX = 50; let endX = width - 50; let lineSpacing = this.note_height;
       for (let i = 0; i < 5; i++) { let y1 = y - (2 * lineSpacing) + (i * lineSpacing); pg.line(startX, y1, endX, y1); }
     } else {
-      stroke(0, alpha); strokeWeight(1);
+      stroke(staffColor); strokeWeight(1);
       let startX = 50; let endX = width - 50; let lineSpacing = this.note_height;
       for (let i = 0; i < 5; i++) { let y1 = y - (2 * lineSpacing) + (i * lineSpacing); line(startX, y1, endX, y1); }
     }
@@ -910,18 +928,12 @@ class Scene2 {
       // 80.12초부터는 마우스 클릭 시 '6' 키 애니메이션 발생
       this.triggerFlashRectangles();
     } else {
-      // 80.12초 이전에는 기존의 음악 기호 생성 로직 유지
-      const randomSymbol = random(symbolsArray);
-      this.clickedSymbols.push({
-        x: mouseX,
-        y: mouseY,
-        symbol: randomSymbol,
-        size: 100,
-        alpha: 255,
-        color: color(random(255), random(255), random(255)), // 랜덤 색상 추가
-        isSoaring: false,
-        soarStartTime: 0
-      });
+      // 80.12초 이전에는 오선지 색상 변경 효과를 트리거합니다.
+      if (!this.staffColorChangeActive) {
+        this.staffColorChangeActive = true;
+        this.staffColorChangeStartTime = millis();
+        this.randomStaffColor = color(random(255), random(255), random(255));
+      }
     }
   }
 

@@ -26,7 +26,7 @@ function preload() {
 }
 
 function setup() {
-  createCanvas(windowWidth - 10, windowHeight - 10); // 캔버스를 창 크기로 설정
+  createCanvas(windowWidth -5, windowHeight -5); // 캔버스를 창 크기로 설정
 
   // 사용자 에이전트를 확인하여 모바일 기기인지 판별합니다.
   isMobile = /Mobi|Android/i.test(navigator.userAgent);
@@ -56,45 +56,45 @@ function draw() {
   sceneManager.draw();
 
 
+  // --- 타이머 표시 (씬 5에서는 보이지 않음) ---
+  if (sceneManager.sceneIndex !== 4) {
+    // 분:초:밀리초 형식으로 변환
+    let minutes = floor(timer / 60);
+    let seconds = floor(timer % 60);
+    let millis = floor((timer * 1000) % 1000);
 
+    // nf() 함수로 숫자를 두 자리 또는 세 자리 문자열로 포맷팅 (예: 5 -> "05")
+    let timeString = nf(minutes, 2) + ':' + nf(seconds, 2) + ':' + nf(millis, 3);
 
-  // --- 타이머 표시 ---
-  // 분:초:밀리초 형식으로 변환
-  let minutes = floor(timer / 60);
-  let seconds = floor(timer % 60);
-  let millis = floor((timer * 1000) % 1000);
+    // 타이머 위치 설정
+    let timerX = width / 2;
+    let timerY = height - 30;
 
-  // nf() 함수로 숫자를 두 자리 또는 세 자리 문자열로 포맷팅 (예: 5 -> "05")
-  let timeString = nf(minutes, 2) + ':' + nf(seconds, 2) + ':' + nf(millis, 3);
-
-  // 타이머 위치 설정
-  let timerX = width / 2;
-  let timerY = height - 30;
-
-  // 3.5초가 지나고 음악이 재생 중일 때만 타이머를 떨리게 합니다.
-  if (timer > 3.5 && song.isPlaying()) {
-    // x축으로 매 프레임 떨림
-    timerX += random(-3, 3);
-    // y축으로 20프레임마다 떨림
-    if (frameCount % 40 === 0) {
-      timerY += random(-2, 2);
+    // 3.5초가 지나고 음악이 재생 중일 때만 타이머를 떨리게 합니다.
+    if (timer > 3.5 && song.isPlaying()) {
+      // x축으로 매 프레임 떨림
+      timerX += random(-3, 3);
+      // y축으로 20프레임마다 떨림
+      if (frameCount % 40 === 0) {
+        timerY += random(-2, 2);
+      }
     }
-  }
 
 
-  // 화면 하단 중앙에 텍스트로 타이머 표시
-  // Scene2에서는 배경이 흰색이므로 타이머를 검정으로 표시
-  if (sceneManager.sceneIndex === 1 || sceneManager.sceneIndex === 2 || sceneManager.sceneIndex === 3 || sceneManager.sceneIndex === 4) {
-    fill(0);
-  } else {
-    fill(255); // 흰색
+    // 화면 하단 중앙에 텍스트로 타이머 표시
+    // 배경이 흰색인 씬에서는 타이머를 검정으로 표시
+    if (sceneManager.sceneIndex === 1 || sceneManager.sceneIndex === 2 || sceneManager.sceneIndex === 3) {
+      fill(0);
+    } else {
+      fill(255); // 흰색
+    }
+    noStroke();
+    textSize(24);
+    // 타이머는 항상 기본 폰트로 표시되도록 설정합니다.
+    textFont('sans-serif');
+    textAlign(CENTER, CENTER);
+    text(timeString, timerX, timerY);
   }
-  noStroke();
-  textSize(24);
-  // 타이머는 항상 기본 폰트로 표시되도록 설정합니다.
-  textFont('sans-serif');
-  textAlign(CENTER, CENTER);
-  text(timeString, timerX, timerY);
 
   // push()로 저장했던 좌표계를 복원합니다.
   pop();
@@ -231,7 +231,7 @@ class SceneManager {
       if (song.isPlaying() && song.currentTime() > 0.1) {
         // --- 씬 전환 로직을 SceneManager 내부로 이동 ---
         const currentTime = song.currentTime();
-        
+
         // 211초에 엔딩 시퀀스 시작 (Scene5에서)
         if (currentTime >= 211 && this.sceneIndex === 4) {
           this.currentScene.startEndingSequence();
