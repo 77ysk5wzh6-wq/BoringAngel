@@ -84,7 +84,7 @@ function draw() {
 
   // 화면 하단 중앙에 텍스트로 타이머 표시
   // Scene2에서는 배경이 흰색이므로 타이머를 검정으로 표시
-  if (sceneManager.sceneIndex === 1 || sceneManager.sceneIndex === 2 || sceneManager.sceneIndex === 3) {
+  if (sceneManager.sceneIndex === 1 || sceneManager.sceneIndex === 2 || sceneManager.sceneIndex === 3 || sceneManager.sceneIndex === 4) {
     fill(0);
   } else {
     fill(255); // 흰색

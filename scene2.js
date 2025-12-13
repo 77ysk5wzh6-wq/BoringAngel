@@ -107,7 +107,6 @@ class Scene2 {
     this.soarDuration = 700; // 솟구치는 애니메이션 지속 시간 (1.5초)
     this.soarDistance = 800; // 솟구치는 거리
     this.soarAllTriggered = false; // 80.12초에 모든 기호를 솟구치게 하는 트리거 플래그
-
     this.scoreBuffer = null; // 오프스크린 버퍼
   }
 

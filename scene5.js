@@ -179,6 +179,7 @@ class Scene5 {
     } else if (this.animationPhase === 'FINAL') {
       if (now - this.finalStateStartTime > 4000) { // 4초 후
         this.animationPhase = 'CASKET_MODE';
+        this.prepareCasketGrid(); // CASKET_MODE 그리드를 미리 준비합니다.
       }
     } else if (this.animationPhase === 'FADING_OUT') {
       const elapsed = now - this.fadeOutStartTime;
@@ -216,7 +217,7 @@ class Scene5 {
     }
 
     // 중앙 얼굴 이모지 업데이트
-    if (now - this.lastCenterEmojiUpdateTime > this.currentCenterEmojiUpdateInterval) {
+    if (this.animationPhase !== 'CASKET_MODE' && now - this.lastCenterEmojiUpdateTime > this.currentCenterEmojiUpdateInterval) {
       const centerIndex = floor(this.gridSize / 2);
       if (this.emojiGrid[centerIndex] && this.emojiGrid[centerIndex][centerIndex]) {
         this.emojiGrid[centerIndex][centerIndex] = random(this.faceEmojis);
@@ -271,6 +272,20 @@ class Scene5 {
     shuffle(this.emptyCellIndices, true);
   }
 
+  prepareCasketGrid() {
+    const centerIndex = floor(this.gridSize / 2);
+    for (let r = 0; r < this.gridSize; r++) {
+      for (let c = 0; c < this.gridSize; c++) {
+        if (this.emojiGrid[r] && this.emojiGrid[r][c]) {
+          if (r === centerIndex && c === centerIndex) {
+            this.emojiGrid[r][c] = '🪦';
+          } else {
+            this.emojiGrid[r][c] = random(this.faceEmojis);
+          }
+        }
+      }
+    }
+  }
   updateNonFaceEmojis() {
     const centerIndex = floor(this.gridSize / 2);
     for (let r = 0; r < this.gridSize; r++) {
@@ -304,19 +319,14 @@ class Scene5 {
 
     for (let r = constrain(startRow, 0, this.gridSize - 1); r <= constrain(endRow, 0, this.gridSize - 1); r++) {
       for (let c = constrain(startCol, 0, this.gridSize - 1); c <= constrain(endCol, 0, this.gridSize - 1); c++) {
-        let emojiToDraw;
-        if (this.animationPhase === 'CASKET_MODE') {
-          emojiToDraw = (r === centerIndex && c === centerIndex) ? '🪦' : '';
+        if (this.emojiGrid[r] && this.emojiGrid[r][c]) {
+          const emojiToDraw = this.emojiGrid[r][c];
+          const x = c * cellWidth + cellWidth / 2;
+          const y = r * cellHeight + cellHeight / 2;
+          text(emojiToDraw, x, y);
         } else {
-          if (this.emojiGrid[r] && this.emojiGrid[r][c]) {
-            emojiToDraw = this.emojiGrid[r][c];
-          } else {
-            emojiToDraw = ' '; // 혹시 모를 오류 방지
-          }
+          // emojiGrid[r] 또는 emojiGrid[r][c]가 없는 경우에 대한 처리 (필요 시)
         }
-        const x = c * cellWidth + cellWidth / 2;
-        const y = r * cellHeight + cellHeight / 2;
-        text(emojiToDraw, x, y);
       }
     }
   }
