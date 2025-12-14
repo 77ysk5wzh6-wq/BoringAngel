@@ -750,7 +750,7 @@ class Scene1 {
       let baseSize = initialSize;
 
       let currentSize = baseSize;
-      let currentAlpha = 255;
+      let currentAlpha = 285;
 
       if (this.titleAnimationState === 'animating') {
         const elapsed = millis() - this.titleAnimationStartTime;
