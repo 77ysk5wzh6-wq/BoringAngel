@@ -102,7 +102,7 @@ class Scene4 {
         shapes: ['square', 'circle', 'triangle', 'x-ellipse'],
         style: {
           bgColor: '#c9e6ffff', // Alice Blue
-          fgColor: '#a0305fff',
+          fgColor: '#001399',
           mode: 'SHAPES'
         }
       }
@@ -371,7 +371,7 @@ class Scene4 {
       if (now - this.lastChaosSwitchTime > 70) { // 0.1초마다
         this.lastChaosSwitchTime = now;
 
-        const restrictedNames = ['Korean', 'Music', 'Japanese'];
+        const restrictedNames = ['Korean', 'Music','Shapes'];
         const restrictedIndices = this.languageSets
           .map((s, i) => ({ name: s.name, index: i }))
           .filter(s => restrictedNames.includes(s.name))
@@ -526,7 +526,7 @@ class Scene4 {
     const currentCellHeight = currentGridHeight / this.initialRows;
     const currentTextSize = min(currentCellWidth, currentCellHeight);
 
-    background(255, 180);
+    background(255, 230);
     textAlign(CENTER, CENTER);
     textSize(currentTextSize);
     fill(0, 0, 255); // Scene2와 동일하게 파란색

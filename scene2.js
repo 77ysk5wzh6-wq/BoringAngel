@@ -67,9 +67,9 @@ class Scene2 {
     // --- 배경 악보 생성 변수 ---
     this.backgroundElements = [];
     this.initialBackgroundDensity = 30;
-    this.targetBackgroundDensity = 200;
+    this.targetBackgroundDensity = 180;
     this.initialStaffDensity = 1;
-    this.targetStaffDensity = 25;
+    this.targetStaffDensity = 22;
 
     // --- 피날레 애니메이션 변수 ---
     this.finalFinaleState = 'idle';
