@@ -339,7 +339,7 @@ class Scene4 {
 
         // When faster than 0.7s (700ms), only cycle between Korean, Music, Japanese
         if (targetInterval <= 100) {
-          const restrictedNames = ['Music', 'Japanese','Chinese'];
+          const restrictedNames = ['Music', 'Japanese', 'Chinese'];
           const restrictedIndices = this.languageSets
             .map((s, i) => ({ name: s.name, index: i }))
             .filter(s => restrictedNames.includes(s.name))
@@ -371,7 +371,7 @@ class Scene4 {
       if (now - this.lastChaosSwitchTime > 70) { // 0.1초마다
         this.lastChaosSwitchTime = now;
 
-        const restrictedNames = ['Music','Shapes'];
+        const restrictedNames = ['Music', 'Shapes'];
         const restrictedIndices = this.languageSets
           .map((s, i) => ({ name: s.name, index: i }))
           .filter(s => restrictedNames.includes(s.name))

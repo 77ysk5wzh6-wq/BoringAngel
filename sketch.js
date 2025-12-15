@@ -26,7 +26,7 @@ function preload() {
 }
 
 function setup() {
-  createCanvas(windowWidth -4, windowHeight -4); // 캔버스를 창 크기로 설정
+  createCanvas(windowWidth - 4, windowHeight - 4); // 캔버스를 창 크기로 설정
 
   // 사용자 에이전트를 확인하여 모바일 기기인지 판별합니다.
   isMobile = /Mobi|Android/i.test(navigator.userAgent);
