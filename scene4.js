@@ -60,7 +60,7 @@ class Scene4 {
         glyphs: "･ . , : ; ° ' ` 之 乃 久 小 川 心 光 花 面 重 舞 龍 夢 難 ".split(' '),
         style: {
           bgColor: '#005f00', // Deep Forest Green
-          fgColor: '#00FF41', // Matrix Green
+          fgColor: '#fae24c', // Matrix Green
           mode: 'MATRIX'
         }
       },
@@ -70,8 +70,8 @@ class Scene4 {
         // 아랍어는 오른쪽에서 왼쪽으로 쓰므로, 시각적 밀도에 맞춰 수동으로 정렬합니다.
         glyphs: ". · , : ; ° ' ` ـ ا د ر ل م ن ب ج خ ع غ ف ه ي ش ص ض ط ظ".split(' '),
         style: {
-          bgColor: '#2b0000', // Deep Maroon
-          fgColor: '#FFD700', // Gold
+          bgColor: '#285f99', // Deep Maroon
+          fgColor: '#ff005c', // Gold
           mode: 'GOLD'
         }
       },
@@ -331,7 +331,7 @@ class Scene4 {
       let targetInterval = 1000;
       if (timeRemaining <= 10) {
         let p = constrain(1 - (timeRemaining / 10), 0, 1); // 0 -> 1 (closer to start)
-        targetInterval = map(p * p, 0, 1, 1000, 70); // Accelerating curve
+        targetInterval = map(p * p, 0, 1, 1000, 40); // Accelerating curve
       }
 
       if (now - this.lastChaosSwitchTime > targetInterval) {
@@ -368,7 +368,7 @@ class Scene4 {
     // --- Chaotic Switching during Gathering (until End) ---
     // This phase is always fast (70ms), so it always uses the restricted set.
     if (currentTime >= this.GATHER_START_TIME && currentTime < this.GATHER_END_TIME) {
-      if (now - this.lastChaosSwitchTime > 70) { // 0.1초마다
+      if (now - this.lastChaosSwitchTime > 50) { // 0.1초마다
         this.lastChaosSwitchTime = now;
 
         const restrictedNames = ['Music', 'Shapes'];
