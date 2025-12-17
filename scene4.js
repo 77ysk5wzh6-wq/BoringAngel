@@ -368,7 +368,7 @@ class Scene4 {
     // --- Chaotic Switching during Gathering (until End) ---
     // This phase is always fast (70ms), so it always uses the restricted set.
     if (currentTime >= this.GATHER_START_TIME && currentTime < this.GATHER_END_TIME) {
-      if (now - this.lastChaosSwitchTime > 50) { // 0.1초마다
+      if (now - this.lastChaosSwitchTime > 75) { // 0.1초마다
         this.lastChaosSwitchTime = now;
 
         const restrictedNames = ['Music', 'Shapes'];
